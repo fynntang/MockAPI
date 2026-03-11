@@ -48,6 +48,7 @@ async function loadRoutes() {
     const desc = r.description ? '<span class="desc">' + escapeHtml(r.description) + '</span>' : '';
     const cond = (r.match_headers || r.match_body) ? '<span class="condition-badge" title="Conditional">⚡</span>' : '';
     const scriptBadge = r.script ? '<span class="script-badge" title="Script">📜</span>' : '';
+    const routeData = encodeURIComponent(JSON.stringify(r));
     return '<div class="route">' +
       '<div class="route-info">' +
         '<span class="method ' + mc + '">' + r.method + '</span>' +
@@ -56,8 +57,8 @@ async function loadRoutes() {
         '<span class="status">' + r.status + (r.delay ? ' · ' + r.delay + 'ms' : '') + '</span>' +
       '</div>' +
       '<div class="route-actions">' +
-        '<button class="copy" onclick="copyCurl(' + JSON.stringify(r) + ')" title="Copy curl">📋</button>' +
-        '<button class="copy" onclick="editRoute(' + JSON.stringify(r) + ')" title="Edit">✏️</button>' +
+        '<button class="copy" onclick="copyCurl(\'' + routeData + '\')" title="Copy curl">📋</button>' +
+        '<button class="copy" onclick="editRoute(\'' + routeData + '\')" title="Edit">✏️</button>' +
         '<button class="del" onclick="deleteRoute(\'' + r.id + '\')" title="Delete">✕</button>' +
       '</div>' +
     '</div>';
@@ -82,7 +83,8 @@ function openModal() {
   document.getElementById("modal").style.display = "";
 }
 
-function editRoute(r) {
+function editRoute(data) {
+  const r = JSON.parse(decodeURIComponent(data));
   editingId = r.id;
   document.getElementById("modal-title").textContent = "Edit Route";
   document.getElementById("f-method").value = r.method;
@@ -158,7 +160,8 @@ async function deleteRoute(id) {
   loadRoutes();
 }
 
-function copyCurl(r) {
+function copyCurl(data) {
+  const r = JSON.parse(decodeURIComponent(data));
   const url = location.origin + MOCK_BASE + r.path;
   const cmd = "curl -X " + r.method + " " + url;
   navigator.clipboard.writeText(cmd);
