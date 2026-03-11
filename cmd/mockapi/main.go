@@ -86,7 +86,9 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
 		os.Exit(1)
 	}
-	cfg.Port = port
+	if cfg.Port == 0 {
+		cfg.Port = port
+	}
 
 	srv := server.New(cfg, configFile)
 

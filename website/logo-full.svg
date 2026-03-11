@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Minimalist Lobster Logo for MockAPI -->
+  <rect width="512" height="512" rx="100" fill="#238636"/>
+  
+  <!-- Stylized Lobster Body -->
+  <g transform="translate(256, 256)">
+    <!-- Main body -->
+    <ellipse cx="0" cy="20" rx="80" ry="60" fill="#FFD700"/>
+    
+    <!-- Left claw -->
+    <path d="M -70 -10 Q -100 -30 -90 -60 Q -70 -50 -60 -20" fill="#FFD700"/>
+    <circle cx="-95" cy="-55" r="15" fill="#FFD700"/>
+    
+    <!-- Right claw -->
+    <path d="M 70 -10 Q 100 -30 90 -60 Q 70 -50 60 -20" fill="#FFD700"/>
+    <circle cx="95" cy="-55" r="15" fill="#FFD700"/>
+    
+    <!-- Eyes -->
+    <circle cx="-25" cy="-30" r="12" fill="#1a1a1a"/>
+    <circle cx="25" cy="-30" r="12" fill="#1a1a1a"/>
+    <circle cx="-22" cy="-33" r="4" fill="white"/>
+    <circle cx="28" cy="-33" r="4" fill="white"/>
+    
+    <!-- Antennae -->
+    <path d="M -25 -40 Q -35 -70 -50 -85" stroke="#FFD700" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M 25 -40 Q 35 -70 50 -85" stroke="#FFD700" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <circle cx="-50" cy="-85" r="6" fill="#FFD700"/>
+    <circle cx="50" cy="-85" r="6" fill="#FFD700"/>
+    
+    <!-- Legs (simplified) -->
+    <path d="M -60 30 L -80 50" stroke="#FFD700" stroke-width="5" stroke-linecap="round"/>
+    <path d="M -40 40 L -60 60" stroke="#FFD700" stroke-width="5" stroke-linecap="round"/>
+    <path d="M 40 40 L 60 60" stroke="#FFD700" stroke-width="5" stroke-linecap="round"/>
+    <path d="M 60 30 L 80 50" stroke="#FFD700" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>
