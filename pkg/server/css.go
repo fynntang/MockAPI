@@ -76,6 +76,8 @@ header p { color: #8b949e; margin-top: 4px; }
 .method.patch { background: #d2992233; color: #d29922; }
 .method.delete { background: #f8514933; color: #f85149; }
 .method.all { background: #a371f733; color: #a371f7; }
+.method.ws { background: #1f6feb33; color: #58a6ff; }
+.method.gql { background: #e91e6333; color: #e91e63; }
 
 code { font-size: 13px; color: #c9d1d9; }
 .status { font-size: 12px; color: #8b949e; }

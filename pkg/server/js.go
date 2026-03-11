@@ -9,6 +9,7 @@ const WS_API = "/_api/ws";
 
 document.getElementById("mock-url").textContent = location.origin + MOCK_BASE;
 document.getElementById("ws-url").textContent = location.origin + WS_BASE;
+document.getElementById("graphql-url").textContent = location.origin + "/graphql";
 
 // --- Tabs ---
 document.querySelectorAll(".tab").forEach(tab => {
@@ -399,6 +400,79 @@ function escapeAttr(s) {
 setInterval(() => {
   if (document.getElementById("tab-logs").classList.contains("active")) loadLogs();
 }, 3000);
+
+// --- GraphQL ---
+async function loadGraphQLHandlers() {
+  const res = await fetch("/_api/graphql");
+  const handlers = await res.json();
+  const el = document.getElementById("graphql-handlers");
+  const empty = document.getElementById("graphql-empty");
+
+  if (handlers.length === 0) { el.innerHTML = ""; empty.style.display = ""; return; }
+  empty.style.display = "none";
+
+  el.innerHTML = handlers.map(h => {
+    const desc = h.description ? '<span class="desc">' + escapeHtml(h.description) + '</span>' : '';
+    return '<div class="route">' +
+      '<div class="route-info">' +
+        '<span class="method gql">GQL</span>' +
+        '<code>' + escapeHtml(h.operationName || "(catch-all)") + '</code>' +
+        desc +
+        (h.delay ? '<span class="status">' + h.delay + 'ms</span>' : '') +
+      '</div>' +
+      '<div class="route-actions">' +
+        '<button class="copy" onclick="copyGQLQuery(\'' + escapeHtml(h.operationName || "") + '\')" title="Copy query">📋</button>' +
+        '<button class="del" onclick="deleteGraphQLHandler(\'' + h.id + '\')" title="Delete">✕</button>' +
+      '</div>' +
+    '</div>';
+  }).join("");
+}
+
+function openGraphQLModal() {
+  document.getElementById("gql-op").value = "";
+  document.getElementById("gql-desc").value = "";
+  document.getElementById("gql-delay").value = "0";
+  document.getElementById("gql-response").value = "";
+  document.getElementById("graphql-modal").style.display = "";
+}
+
+function closeGraphQLModal() { document.getElementById("graphql-modal").style.display = "none"; }
+
+async function saveGraphQLHandler() {
+  let response = {};
+  const respText = document.getElementById("gql-response").value.trim();
+  if (respText) {
+    try { response = JSON.parse(respText); } catch(e) { alert("Invalid JSON response"); return; }
+  }
+
+  const h = {
+    operationName: document.getElementById("gql-op").value.trim(),
+    description: document.getElementById("gql-desc").value.trim(),
+    delay: parseInt(document.getElementById("gql-delay").value) || 0,
+    response: response,
+  };
+
+  await fetch("/_api/graphql", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(h),
+  });
+
+  closeGraphQLModal();
+  loadGraphQLHandlers();
+}
+
+async function deleteGraphQLHandler(id) {
+  if (!confirm("Delete this GraphQL mock?")) return;
+  await fetch("/_api/graphql?id=" + id, { method: "DELETE" });
+  loadGraphQLHandlers();
+}
+
+function copyGQLQuery(opName) {
+  const query = opName ? "{ " + opName + " }" : "{ __typename }";
+  navigator.clipboard.writeText(query);
+  alert("Copied: " + query);
+}
 
 loadRoutes();
 `

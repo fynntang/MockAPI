@@ -17,6 +17,7 @@ const indexHTML = `<!DOCTYPE html>
 
     <div class="tabs">
       <button class="tab active" data-tab="routes">Routes</button>
+      <button class="tab" data-tab="graphql">GraphQL</button>
       <button class="tab" data-tab="ws">WebSocket</button>
       <button class="tab" data-tab="logs">Request Log</button>
       <button class="tab" data-tab="settings">Settings</button>
@@ -53,6 +54,20 @@ const indexHTML = `<!DOCTYPE html>
       <div id="ws-handlers" class="routes"></div>
       <div id="ws-empty" class="empty" style="display:none;">
         <p>No WebSocket handlers. Click <strong>+ Add WS Handler</strong> to create one.</p>
+      </div>
+    </div>
+
+    <!-- GraphQL Tab -->
+    <div id="tab-graphql" class="tab-content">
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <button onclick="openGraphQLModal()">+ Add GraphQL Mock</button>
+        </div>
+        <span class="hint">Endpoint: <code id="graphql-url"></code></span>
+      </div>
+      <div id="graphql-handlers" class="routes"></div>
+      <div id="graphql-empty" class="empty" style="display:none;">
+        <p>No GraphQL mocks. Click <strong>+ Add GraphQL Mock</strong> to create one.</p>
       </div>
     </div>
 
@@ -246,6 +261,35 @@ respond({body: JSON.stringify({echo: body})});'></textarea>
       <div class="actions">
         <button onclick="saveWSHandler()">Save</button>
         <button class="secondary" onclick="closeWSModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GraphQL Modal -->
+  <div id="graphql-modal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <h2>Add GraphQL Mock</h2>
+      <div class="form">
+        <div class="row full">
+          <label>Operation Name</label>
+          <input id="gql-op" placeholder="GetUsers, CreateUser, or leave empty for catch-all" />
+        </div>
+        <div class="row full">
+          <label>Description</label>
+          <input id="gql-desc" placeholder="Optional description" />
+        </div>
+        <div class="row">
+          <label>Delay (ms)</label>
+          <input id="gql-delay" type="number" value="0" />
+        </div>
+        <div class="row full">
+          <label>Response Data (JSON)</label>
+          <textarea id="gql-response" rows="8" placeholder='{"users": [{"id": 1, "name": "Alice"}]}'></textarea>
+        </div>
+      </div>
+      <div class="actions">
+        <button onclick="saveGraphQLHandler()">Save</button>
+        <button class="secondary" onclick="closeGraphQLModal()">Cancel</button>
       </div>
     </div>
   </div>

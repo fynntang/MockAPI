@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"mockapi/pkg/config"
+	"mockapi/pkg/graphql"
 	"mockapi/pkg/script"
 	"mockapi/pkg/swagger"
 	"mockapi/pkg/ws"
@@ -65,12 +66,16 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/_api/config", s.handleAPIConfig)
 	s.mux.HandleFunc("/_api/import-swagger", s.handleImportSwagger)
 	s.mux.HandleFunc("/_api/ws", s.handleAPIWS)
+	s.mux.HandleFunc("/_api/graphql", s.handleAPIGraphQL)
 
 	// Mock routes
 	s.mux.HandleFunc("/mock/", s.handleMock)
 	
 	// WebSocket routes
 	s.mux.HandleFunc("/ws/", s.handleWS)
+	
+	// GraphQL endpoint
+	s.mux.HandleFunc("/graphql", s.handleGraphQL)
 }
 
 // --- Static files ---
@@ -600,6 +605,79 @@ func (s *Server) handleAPIWS(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	s.wsMock.HandleWS(w, r, s.scriptEngine)
+}
+
+// --- GraphQL API ---
+
+func (s *Server) handleAPIGraphQL(w http.ResponseWriter, r *http.Request) {
+	s.cors(w, r)
+	w.Header().Set("Content-Type", "application/json")
+
+	switch r.Method {
+	case http.MethodGet:
+		json.NewEncoder(w).Encode(s.cfg.GraphQL)
+
+	case http.MethodPost:
+		var h config.GraphQLHandler
+		if err := json.NewDecoder(r.Body).Decode(&h); err != nil {
+			http.Error(w, err.Error(), 400)
+			return
+		}
+		h.ID = generateID()
+		s.cfg.AddGraphQLHandler(h)
+		s.cfg.Save(s.configFile)
+		json.NewEncoder(w).Encode(h)
+
+	case http.MethodDelete:
+		id := r.URL.Query().Get("id")
+		s.cfg.DeleteGraphQLHandler(id)
+		s.cfg.Save(s.configFile)
+		w.WriteHeader(204)
+	}
+}
+
+// --- GraphQL Handler ---
+
+func (s *Server) handleGraphQL(w http.ResponseWriter, r *http.Request) {
+	s.cors(w, r)
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	body, _ := io.ReadAll(r.Body)
+	req, err := graphql.ParseRequest(string(body))
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(400)
+		json.NewEncoder(w).Encode(graphql.Response{
+			Errors: []graphql.Error{{Message: "Invalid GraphQL request"}},
+		})
+		return
+	}
+
+	// Find matching handler
+	opName := req.OperationName
+	if opName == "" {
+		opName = graphql.ExtractOperation(req.Query)
+	}
+
+	handler := s.cfg.FindGraphQLHandler(opName)
+	if handler == nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(graphql.Response{
+			Errors: []graphql.Error{{Message: "No mock found for operation: " + opName}},
+		})
+		return
+	}
+
+	if handler.Delay > 0 {
+		time.Sleep(time.Duration(handler.Delay) * time.Millisecond)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(graphql.Response{
+		Data: handler.Response,
+	})
 }
 
 // --- Helpers for script context ---

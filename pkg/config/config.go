@@ -34,14 +34,24 @@ type RequestLog struct {
 	Proxied   bool   `json:"proxied,omitempty"`
 }
 
+// GraphQLHandler represents a mock for GraphQL operations
+type GraphQLHandler struct {
+	ID            string      `json:"id"`
+	OperationName string      `json:"operationName"`
+	Response      interface{} `json:"response"`
+	Delay         int         `json:"delay_ms,omitempty"`
+	Description   string      `json:"description,omitempty"`
+}
+
 type Config struct {
-	Port       int          `json:"port"`
-	Routes     []Route      `json:"routes"`
-	Logs       []RequestLog `json:"logs,omitempty"`
-	CORSEnabled bool        `json:"cors_enabled"`
-	MaxLogs    int          `json:"max_logs"`
-	ProxyURL   string       `json:"proxy_url,omitempty"` // forward unmatched requests
-	mu         sync.Mutex
+	Port        int              `json:"port"`
+	Routes      []Route          `json:"routes"`
+	Logs        []RequestLog     `json:"logs,omitempty"`
+	CORSEnabled bool             `json:"cors_enabled"`
+	MaxLogs     int              `json:"max_logs"`
+	ProxyURL    string           `json:"proxy_url,omitempty"`
+	GraphQL     []GraphQLHandler `json:"graphql,omitempty"`
+	mu          sync.Mutex
 }
 
 func Default() *Config {
@@ -136,4 +146,32 @@ func (c *Config) ClearLogs() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.Logs = nil
+}
+
+func (c *Config) AddGraphQLHandler(h GraphQLHandler) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.GraphQL = append(c.GraphQL, h)
+}
+
+func (c *Config) DeleteGraphQLHandler(id string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for i, h := range c.GraphQL {
+		if h.ID == id {
+			c.GraphQL = append(c.GraphQL[:i], c.GraphQL[i+1:]...)
+			return
+		}
+	}
+}
+
+func (c *Config) FindGraphQLHandler(operationName string) *GraphQLHandler {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for i := range c.GraphQL {
+		if c.GraphQL[i].OperationName == operationName || c.GraphQL[i].OperationName == "" {
+			return &c.GraphQL[i]
+		}
+	}
+	return nil
 }
