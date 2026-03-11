@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MockAPI — Lightweight Local API Mock Server</title>
+  <meta name="description" content="Zero dependencies. One binary. Full-featured mock server with Web UI, scripts, WebSocket, GraphQL, and Swagger import.">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    :root {
+      --bg: #0f1117;
+      --bg-secondary: #161b22;
+      --text: #c9d1d9;
+      --text-muted: #8b949e;
+      --accent: #238636;
+      --accent-hover: #2ea043;
+      --border: #30363d;
+      --code-bg: #0d1117;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+    
+    /* Header */
+    header {
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      z-index: 100;
+    }
+    
+    nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .logo {
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+      text-decoration: none;
+    }
+    
+    .logo span { color: var(--accent); }
+    
+    .nav-links a {
+      color: var(--text);
+      text-decoration: none;
+      margin-left: 24px;
+      font-size: 14px;
+    }
+    
+    .nav-links a:hover { color: var(--accent); }
+    
+    .btn {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      padding: 10px 24px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 500;
+      transition: all 0.15s;
+      border: none;
+      cursor: pointer;
+    }
+    
+    .btn:hover { background: var(--accent-hover); }
+    
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+    }
+    
+    .btn-secondary:hover { border-color: var(--accent); }
+    
+    /* Hero */
+    .hero {
+      padding: 100px 0;
+      text-align: center;
+    }
+    
+    .hero h1 {
+      font-size: 48px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 16px;
+      letter-spacing: -1px;
+    }
+    
+    .hero p {
+      font-size: 20px;
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 0 auto 32px;
+    }
+    
+    .hero-buttons {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      margin-bottom: 48px;
+    }
+    
+    .hero-image {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 900px;
+      margin: 0 auto;
+      text-align: left;
+    }
+    
+    .hero-image pre {
+      background: var(--code-bg);
+      padding: 20px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 14px;
+    }
+    
+    /* Features */
+    .features {
+      padding: 100px 0;
+      background: var(--bg-secondary);
+    }
+    
+    .section-title {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+    
+    .section-title h2 {
+      font-size: 36px;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+    
+    .section-title p {
+      color: var(--text-muted);
+      font-size: 18px;
+    }
+    
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+    }
+    
+    .feature {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      transition: border-color 0.15s;
+    }
+    
+    .feature:hover { border-color: var(--accent); }
+    
+    .feature-icon {
+      font-size: 32px;
+      margin-bottom: 16px;
+    }
+    
+    .feature h3 {
+      font-size: 18px;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    
+    .feature p {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    
+    /* Code Examples */
+    .examples {
+      padding: 100px 0;
+    }
+    
+    .example-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+    
+    .tab {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 8px 16px;
+      cursor: pointer;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    
+    .tab.active {
+      background: var(--bg-secondary);
+      color: #fff;
+    }
+    
+    .example-code {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      overflow-x: auto;
+    }
+    
+    .example-code pre {
+      font-family: "SF Mono", Monaco, monospace;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+    
+    .comment { color: #8b949e; }
+    .keyword { color: #ff7b72; }
+    .string { color: #a5d6ff; }
+    .number { color: #79c0ff; }
+    
+    /* Download */
+    .download {
+      padding: 100px 0;
+      background: var(--bg-secondary);
+      text-align: center;
+    }
+    
+    .download-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 24px;
+      max-width: 900px;
+      margin: 48px auto 0;
+    }
+    
+    .download-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+    }
+    
+    .download-card h3 {
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    
+    .download-card p {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+    
+    .download-card code {
+      background: var(--code-bg);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    
+    /* Footer */
+    footer {
+      padding: 40px 0;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    
+    footer a {
+      color: var(--text);
+      text-decoration: none;
+    }
+    
+    footer a:hover { color: var(--accent); }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hero h1 { font-size: 32px; }
+      .hero p { font-size: 16px; }
+      .hero-buttons { flex-direction: column; }
+      .nav-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <nav>
+        <a href="#" class="logo">🦞 Mock<span>API</span></a>
+        <div class="nav-links">
+          <a href="#features">Features</a>
+          <a href="#examples">Examples</a>
+          <a href="#download">Download</a>
+          <a href="https://github.com/fynntang/MockAPI" target="_blank">GitHub</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="container">
+      <h1>Lightweight Local API Mock Server</h1>
+      <p>Zero dependencies. One binary. Full-featured mock server with Web UI, JavaScript scripts, WebSocket, GraphQL, and Swagger import.</p>
+      
+      <div class="hero-buttons">
+        <a href="#download" class="btn">Download</a>
+        <a href="https://github.com/fynntang/MockAPI" class="btn btn-secondary">View on GitHub</a>
+      </div>
+      
+      <div class="hero-image">
+        <pre><span class="comment"># Install</span>
+go build -o mockapi ./cmd/mockapi
+
+<span class="comment"># Run</span>
+./mockapi
+
+<span class="comment"># Open http://localhost:8088</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="features" id="features">
+    <div class="container">
+      <div class="section-title">
+        <h2>Everything You Need</h2>
+        <p>Powerful features in a single binary</p>
+      </div>
+      
+      <div class="feature-grid">
+        <div class="feature">
+          <div class="feature-icon">🎨</div>
+          <h3>Web UI</h3>
+          <p>Dark theme interface to visually manage all your mock routes. No config files needed.</p>
+        </div>
+        
+        <div class="feature">
+          <div class="feature-icon">📜</div>
+          <h3>JavaScript Scripts</h3>
+          <p>Write dynamic responses with full JavaScript. Access method, path, params, query, and body.</p>
+        </div>
+        
+        <div class="feature">
+          <div class="feature-icon">📥</div>
+          <h3>Swagger Import</h3>
+          <p>Import OpenAPI 2.0/3.x specs and auto-generate mock routes instantly.</p>
+        </div>
+        
+        <div class="feature">
+          <div class="feature-icon">🔌</div>
+          <h3>WebSocket Mock</h3>
+          <p>Mock WebSocket endpoints with auto-reply or JavaScript message handlers.</p>
+        </div>
+        
+        <div class="feature">
+          <div class="feature-icon">⚡</div>
+          <h3>GraphQL Support</h3>
+          <p>Mock GraphQL queries and mutations with operation-based matching.</p>
+        </div>
+        
+        <div class="feature">
+          <div class="feature-icon">🔄</div>
+          <h3>Proxy Mode</h3>
+          <p>Forward unmatched requests to real backend. Perfect for incremental mocking.</p>
+        </div>
+        
+        <div class="feature">
+          <div class="feature-icon">⚙️</div>
+          <h3>Conditional Routes</h3>
+          <p>Match by headers or body content. Different responses for different requests.</p>
+        </div>
+        
+        <div class="feature">
+          <div class="feature-icon">🔀</div>
+          <h3>Dynamic Paths</h3>
+          <p>Path parameters with <code>:id</code> syntax. Wildcards with <code>*</code> for catch-all routes.</p>
+        </div>
+        
+        <div class="feature">
+          <div class="feature-icon">🚀</div>
+          <h3>Zero Dependencies</h3>
+          <p>Single Go binary. No Node.js, no database, no runtime dependencies.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="examples" id="examples">
+    <div class="container">
+      <div class="section-title">
+        <h2>Simple Yet Powerful</h2>
+        <p>See how easy it is to create mock APIs</p>
+      </div>
+      
+      <div class="example-tabs">
+        <button class="tab active" onclick="showExample('static')">Static Response</button>
+        <button class="tab" onclick="showExample('script')">JavaScript</button>
+        <button class="tab" onclick="showExample('graphql')">GraphQL</button>
+        <button class="tab" onclick="showExample('swagger')">Swagger Import</button>
+      </div>
+      
+      <div class="example-code">
+        <pre id="example-static"><span class="comment"># Create a route via API</span>
+curl -X POST http://localhost:8088/_api/routes \
+  -H <span class="string">"Content-Type: application/json"</span> \
+  -d <span class="string">'{
+    "method": "GET",
+    "path": "/users/:id",
+    "status": 200,
+    "body": "{\"id\": {{id}}, \"name\": \"Alice\"}"
+  }'</span>
+
+<span class="comment"># Test it</span>
+curl http://localhost:8088/mock/users/42
+<span class="comment"># {"id": 42, "name": "Alice"}</span></pre>
+
+        <pre id="example-script" style="display:none;"><span class="comment"># Dynamic response with JavaScript</span>
+curl -X POST http://localhost:8088/_api/routes \
+  -H <span class="string">"Content-Type: application/json"</span> \
+  -d <span class="string">'{
+    "method": "GET",
+    "path": "/random",
+    "script": "respond({
+      status: 200,
+      body: JSON.stringify({
+        rand: Math.floor(Math.random() * 1000),
+        timestamp: Date.now()
+      })
+    })"
+  }'</span>
+
+<span class="comment"># Each request returns different random number</span></pre>
+
+        <pre id="example-graphql" style="display:none;"><span class="comment"># Create GraphQL mock</span>
+curl -X POST http://localhost:8088/_api/graphql \
+  -H <span class="string">"Content-Type: application/json"</span> \
+  -d <span class="string">'{
+    "operationName": "GetUsers",
+    "response": {
+      "users": [
+        {"id": 1, "name": "Alice"},
+        {"id": 2, "name": "Bob"}
+      ]
+    }
+  }'</span>
+
+<span class="comment"># Query it</span>
+curl -X POST http://localhost:8088/graphql \
+  -H <span class="string">"Content-Type: application/json"</span> \
+  -d <span class="string">'{"query": "{ GetUsers { id name } }"}'</span></pre>
+
+        <pre id="example-swagger" style="display:none;"><span class="comment"># Import from OpenAPI spec</span>
+curl -X POST http://localhost:8088/_api/import-swagger \
+  -H <span class="string">"Content-Type: application/json"</span> \
+  -d @openapi.json
+
+<span class="comment"># All paths auto-generated as mock routes!</span>
+<span class="comment"># Supports OpenAPI 2.0 (Swagger) and 3.x</span>
+<span class="comment"># JSON and YAML formats</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="download" id="download">
+    <div class="container">
+      <div class="section-title">
+        <h2>Get Started</h2>
+        <p>Download and run in seconds</p>
+      </div>
+      
+      <div class="download-cards">
+        <div class="download-card">
+          <h3>🐹 From Source</h3>
+          <p>Requires Go 1.21+</p>
+          <code>go install github.com/fynntang/MockAPI@latest</code>
+        </div>
+        
+        <div class="download-card">
+          <h3>🐳 Docker</h3>
+          <p>Containerized deployment</p>
+          <code>docker run -p 8088:8088 mockapi</code>
+        </div>
+        
+        <div class="download-card">
+          <h3>📦 Binaries</h3>
+          <p>Pre-built for your platform</p>
+          <a href="https://github.com/fynntang/MockAPI/releases" class="btn btn-secondary" style="margin-top:12px;">Download</a>
+        </div>
+      </div>
+      
+      <div style="margin-top: 48px;">
+        <a href="https://github.com/fynntang/MockAPI" class="btn">View on GitHub</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <p>Built with ❤️ by <a href="https://github.com/fynntang" target="_blank">@fynntang</a></p>
+      <p style="margin-top: 8px;">Open Source • MIT License</p>
+    </div>
+  </footer>
+
+  <script>
+    function showExample(name) {
+      document.querySelectorAll('.example-code pre').forEach(el => el.style.display = 'none');
+      document.getElementById('example-' + name).style.display = 'block';
+      
+      document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+      event.target.classList.add('active');
+    }
+  </script>
+</body>
+</html>
