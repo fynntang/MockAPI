@@ -4,537 +4,417 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MockAPI — Lightweight Local API Mock Server</title>
-  <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <meta name="description" content="Zero dependencies. One binary. Full-featured mock server with Web UI, scripts, WebSocket, GraphQL, and Swagger import.">
-  
-  <!-- Google AdSense -->
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7317166346096257" crossorigin="anonymous"></script>
+  <meta name="description" content="Zero dependencies. One binary. Full-featured mock server with Web UI, JavaScript scripts, WebSocket, GraphQL, and Swagger import.">
+  <meta name="keywords" content="API Mock, Mock Server, Go, Developer Tools, API Testing, GraphQL, WebSocket">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-go.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#8B5CF6',
+            secondary: '#6366F1',
+            dark: '#0F0F1A',
+            darker: '#080810'
+          }
+        }
+      }
+    }
+  </script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    
-    :root {
-      --bg: #0f1117;
-      --bg-secondary: #161b22;
-      --text: #c9d1d9;
-      --text-muted: #8b949e;
-      --accent: #238636;
-      --accent-hover: #2ea043;
-      --border: #30363d;
-      --code-bg: #0d1117;
-    }
-    
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.6;
+      background: linear-gradient(135deg, #080810 0%, #0F0F1A 50%, #1A1A2E 100%);
+      min-height: 100vh;
     }
-    
-    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
-    
-    /* Header */
-    header {
-      padding: 20px 0;
-      border-bottom: 1px solid var(--border);
-      position: sticky;
-      top: 0;
-      background: var(--bg);
-      z-index: 100;
+    .gradient-text {
+      background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
-    
-    nav {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    .feature-card {
+      background: rgba(139, 92, 246, 0.05);
+      border: 1px solid rgba(139, 92, 246, 0.1);
+      transition: all 0.3s ease;
     }
-    
-    .logo {
-      font-size: 24px;
-      font-weight: 700;
-      color: #fff;
-      text-decoration: none;
+    .feature-card:hover {
+      background: rgba(139, 92, 246, 0.1);
+      border-color: rgba(139, 92, 246, 0.3);
+      transform: translateY(-2px);
     }
-    
-    .logo span { color: var(--accent); }
-    
-    .nav-links a {
-      color: var(--text);
-      text-decoration: none;
-      margin-left: 24px;
-      font-size: 14px;
+    .btn-primary {
+      background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%);
+      transition: all 0.3s ease;
     }
-    
-    .nav-links a:hover { color: var(--accent); }
-    
-    .btn {
-      display: inline-block;
-      background: var(--accent);
-      color: #fff;
-      padding: 10px 24px;
-      border-radius: 6px;
-      text-decoration: none;
-      font-weight: 500;
-      transition: all 0.15s;
-      border: none;
-      cursor: pointer;
+    .btn-primary:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+      box-shadow: 0 10px 40px rgba(139, 92, 246, 0.3);
     }
-    
-    .btn:hover { background: var(--accent-hover); }
-    
-    .btn-secondary {
-      background: transparent;
-      border: 1px solid var(--border);
+    .stat-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
     }
-    
-    .btn-secondary:hover { border-color: var(--accent); }
-    
-    /* Hero */
-    .hero {
-      padding: 100px 0;
-      text-align: center;
-    }
-    
-    .hero h1 {
-      font-size: 48px;
-      font-weight: 800;
-      color: #fff;
-      margin-bottom: 16px;
-      letter-spacing: -1px;
-    }
-    
-    .hero p {
-      font-size: 20px;
-      color: var(--text-muted);
-      max-width: 600px;
-      margin: 0 auto 32px;
-    }
-    
-    .hero-buttons {
-      display: flex;
-      gap: 16px;
-      justify-content: center;
-      margin-bottom: 48px;
-    }
-    
-    .hero-image {
-      background: var(--bg-secondary);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 24px;
-      max-width: 900px;
-      margin: 0 auto;
-      text-align: left;
-    }
-    
-    .hero-image pre {
-      background: var(--code-bg);
-      padding: 20px;
-      border-radius: 8px;
-      overflow-x: auto;
-      font-size: 14px;
-    }
-    
-    /* Features */
-    .features {
-      padding: 100px 0;
-      background: var(--bg-secondary);
-    }
-    
-    .section-title {
-      text-align: center;
-      margin-bottom: 60px;
-    }
-    
-    .section-title h2 {
-      font-size: 36px;
-      color: #fff;
-      margin-bottom: 12px;
-    }
-    
-    .section-title p {
-      color: var(--text-muted);
-      font-size: 18px;
-    }
-    
-    .feature-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 24px;
-    }
-    
-    .feature {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 24px;
-      transition: border-color 0.15s;
-    }
-    
-    .feature:hover { border-color: var(--accent); }
-    
-    .feature-icon {
-      font-size: 32px;
-      margin-bottom: 16px;
-    }
-    
-    .feature h3 {
-      font-size: 18px;
-      color: #fff;
-      margin-bottom: 8px;
-    }
-    
-    .feature p {
-      color: var(--text-muted);
-      font-size: 14px;
-    }
-    
-    /* Code Examples */
-    .examples {
-      padding: 100px 0;
-    }
-    
-    .example-tabs {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 24px;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 16px;
-    }
-    
-    .tab {
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      padding: 8px 16px;
-      cursor: pointer;
-      border-radius: 6px;
-      font-size: 14px;
-    }
-    
-    .tab.active {
-      background: var(--bg-secondary);
-      color: #fff;
-    }
-    
-    .example-code {
-      background: var(--code-bg);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 24px;
-      overflow-x: auto;
-    }
-    
-    .example-code pre {
-      font-family: "SF Mono", Monaco, monospace;
-      font-size: 14px;
-      line-height: 1.8;
-    }
-    
-    .comment { color: #8b949e; }
-    .keyword { color: #ff7b72; }
-    .string { color: #a5d6ff; }
-    .number { color: #79c0ff; }
-    
-    /* Download */
-    .download {
-      padding: 100px 0;
-      background: var(--bg-secondary);
-      text-align: center;
-    }
-    
-    .download-cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 24px;
-      max-width: 900px;
-      margin: 48px auto 0;
-    }
-    
-    .download-card {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 24px;
-    }
-    
-    .download-card h3 {
-      color: #fff;
-      margin-bottom: 8px;
-    }
-    
-    .download-card p {
-      color: var(--text-muted);
-      font-size: 14px;
-      margin-bottom: 16px;
-    }
-    
-    .download-card code {
-      background: var(--code-bg);
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 13px;
-    }
-    
-    /* Footer */
-    footer {
-      padding: 40px 0;
-      border-top: 1px solid var(--border);
-      text-align: center;
-      color: var(--text-muted);
-      font-size: 14px;
-    }
-    
-    footer a {
-      color: var(--text);
-      text-decoration: none;
-    }
-    
-    footer a:hover { color: var(--accent); }
-    
-    /* Responsive */
-    @media (max-width: 768px) {
-      .hero h1 { font-size: 32px; }
-      .hero p { font-size: 16px; }
-      .hero-buttons { flex-direction: column; }
-      .nav-links { display: none; }
+    .code-block {
+      background: #1A1A2E;
+      border: 1px solid rgba(139, 92, 246, 0.2);
     }
   </style>
 </head>
-<body>
-  <header>
-    <div class="container">
-      <nav>
-        <a href="#" class="logo">
-      <img src="logo.svg" alt="MockAPI" style="height:32px;vertical-align:middle;margin-right:8px;">
-      Mock<span>API</span>
-    </a>
-        <div class="nav-links">
-          <a href="#features">Features</a>
-          <a href="#examples">Examples</a>
-          <a href="#download">Download</a>
-          <a href="https://github.com/fynntang/MockAPI" target="_blank">GitHub</a>
-        </div>
-      </nav>
+<body class="text-gray-100">
+  <!-- Navigation -->
+  <nav class="fixed top-0 w-full z-50 bg-darker/80 backdrop-blur-md border-b border-white/5">
+    <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+      <div class="flex items-center space-x-2">
+        <span class="text-2xl">🦞</span>
+        <span class="text-xl font-bold">MockAPI</span>
+      </div>
+      <div class="hidden md:flex space-x-8 text-sm">
+        <a href="#features" class="hover:text-primary transition">Features</a>
+        <a href="#performance" class="hover:text-primary transition">Performance</a>
+        <a href="#demo" class="hover:text-primary transition">Demo</a>
+        <a href="#pricing" class="hover:text-primary transition">Pricing</a>
+        <a href="https://github.com/fynntang/MockAPI" class="hover:text-primary transition">GitHub</a>
+      </div>
+      <a href="#download" class="btn-primary px-6 py-2 rounded-lg font-medium text-sm">
+        Download Free
+      </a>
     </div>
-  </header>
+  </nav>
 
-  <section class="hero">
-    <div class="container">
-      <h1>Lightweight Local API Mock Server</h1>
-      <p>Zero dependencies. One binary. Full-featured mock server with Web UI, JavaScript scripts, WebSocket, GraphQL, and Swagger import.</p>
-      
-      <div class="hero-buttons">
-        <a href="#download" class="btn">Download</a>
-        <a href="https://github.com/fynntang/MockAPI" class="btn btn-secondary">View on GitHub</a>
+  <!-- Hero Section -->
+  <section class="pt-32 pb-20 px-6">
+    <div class="max-w-7xl mx-auto text-center">
+      <div class="inline-flex items-center space-x-2 bg-primary/10 border border-primary/20 rounded-full px-4 py-2 mb-8">
+        <span class="text-primary text-sm">✨ Now with CLI commands</span>
       </div>
-      
-      <div class="hero-image">
-        <pre><span class="comment"># Install</span>
-go build -o mockapi ./cmd/mockapi
-
-<span class="comment"># Run</span>
-./mockapi
-
-<span class="comment"># Open http://localhost:8088</span></pre>
-      </div>
-    </div>
-  </section>
-
-  <section class="features" id="features">
-    <div class="container">
-      <div class="section-title">
-        <h2>Everything You Need</h2>
-        <p>Powerful features in a single binary</p>
-      </div>
-      
-      <div class="feature-grid">
-        <div class="feature">
-          <div class="feature-icon">🎨</div>
-          <h3>Web UI</h3>
-          <p>Dark theme interface to visually manage all your mock routes. No config files needed.</p>
-        </div>
-        
-        <div class="feature">
-          <div class="feature-icon">📜</div>
-          <h3>JavaScript Scripts</h3>
-          <p>Write dynamic responses with full JavaScript. Access method, path, params, query, and body.</p>
-        </div>
-        
-        <div class="feature">
-          <div class="feature-icon">📥</div>
-          <h3>Swagger Import</h3>
-          <p>Import OpenAPI 2.0/3.x specs and auto-generate mock routes instantly.</p>
-        </div>
-        
-        <div class="feature">
-          <div class="feature-icon">🔌</div>
-          <h3>WebSocket Mock</h3>
-          <p>Mock WebSocket endpoints with auto-reply or JavaScript message handlers.</p>
-        </div>
-        
-        <div class="feature">
-          <div class="feature-icon">⚡</div>
-          <h3>GraphQL Support</h3>
-          <p>Mock GraphQL queries and mutations with operation-based matching.</p>
-        </div>
-        
-        <div class="feature">
-          <div class="feature-icon">🔄</div>
-          <h3>Proxy Mode</h3>
-          <p>Forward unmatched requests to real backend. Perfect for incremental mocking.</p>
-        </div>
-        
-        <div class="feature">
-          <div class="feature-icon">⚙️</div>
-          <h3>Conditional Routes</h3>
-          <p>Match by headers or body content. Different responses for different requests.</p>
-        </div>
-        
-        <div class="feature">
-          <div class="feature-icon">🔀</div>
-          <h3>Dynamic Paths</h3>
-          <p>Path parameters with <code>:id</code> syntax. Wildcards with <code>*</code> for catch-all routes.</p>
-        </div>
-        
-        <div class="feature">
-          <div class="feature-icon">🚀</div>
-          <h3>Zero Dependencies</h3>
-          <p>Single Go binary. No Node.js, no database, no runtime dependencies.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="examples" id="examples">
-    <div class="container">
-      <div class="section-title">
-        <h2>Simple Yet Powerful</h2>
-        <p>See how easy it is to create mock APIs</p>
-      </div>
-      
-      <div class="example-tabs">
-        <button class="tab active" onclick="showExample('static')">Static Response</button>
-        <button class="tab" onclick="showExample('script')">JavaScript</button>
-        <button class="tab" onclick="showExample('graphql')">GraphQL</button>
-        <button class="tab" onclick="showExample('swagger')">Swagger Import</button>
-      </div>
-      
-      <div class="example-code">
-        <pre id="example-static"><span class="comment"># Create a route via API</span>
-curl -X POST http://localhost:8088/_api/routes \
-  -H <span class="string">"Content-Type: application/json"</span> \
-  -d <span class="string">'{
-    "method": "GET",
-    "path": "/users/:id",
-    "status": 200,
-    "body": "{\"id\": {{id}}, \"name\": \"Alice\"}"
-  }'</span>
-
-<span class="comment"># Test it</span>
-curl http://localhost:8088/mock/users/42
-<span class="comment"># {"id": 42, "name": "Alice"}</span></pre>
-
-        <pre id="example-script" style="display:none;"><span class="comment"># Dynamic response with JavaScript</span>
-curl -X POST http://localhost:8088/_api/routes \
-  -H <span class="string">"Content-Type: application/json"</span> \
-  -d <span class="string">'{
-    "method": "GET",
-    "path": "/random",
-    "script": "respond({
-      status: 200,
-      body: JSON.stringify({
-        rand: Math.floor(Math.random() * 1000),
-        timestamp: Date.now()
-      })
-    })"
-  }'</span>
-
-<span class="comment"># Each request returns different random number</span></pre>
-
-        <pre id="example-graphql" style="display:none;"><span class="comment"># Create GraphQL mock</span>
-curl -X POST http://localhost:8088/_api/graphql \
-  -H <span class="string">"Content-Type: application/json"</span> \
-  -d <span class="string">'{
-    "operationName": "GetUsers",
-    "response": {
-      "users": [
-        {"id": 1, "name": "Alice"},
-        {"id": 2, "name": "Bob"}
-      ]
-    }
-  }'</span>
-
-<span class="comment"># Query it</span>
-curl -X POST http://localhost:8088/graphql \
-  -H <span class="string">"Content-Type: application/json"</span> \
-  -d <span class="string">'{"query": "{ GetUsers { id name } }"}'</span></pre>
-
-        <pre id="example-swagger" style="display:none;"><span class="comment"># Import from OpenAPI spec</span>
-curl -X POST http://localhost:8088/_api/import-swagger \
-  -H <span class="string">"Content-Type: application/json"</span> \
-  -d @openapi.json
-
-<span class="comment"># All paths auto-generated as mock routes!</span>
-<span class="comment"># Supports OpenAPI 2.0 (Swagger) and 3.x</span>
-<span class="comment"># JSON and YAML formats</span></pre>
-      </div>
-    </div>
-  </section>
-
-  <section class="download" id="download">
-    <div class="container">
-      <div class="section-title">
-        <h2>Get Started</h2>
-        <p>Download and run in seconds</p>
-      </div>
-      
-      <div class="download-cards">
-        <div class="download-card">
-          <h3>🐹 From Source</h3>
-          <p>Requires Go 1.21+</p>
-          <code>go install github.com/fynntang/MockAPI@latest</code>
-        </div>
-        
-        <div class="download-card">
-          <h3>🐳 Docker</h3>
-          <p>Containerized deployment</p>
-          <code>docker run -p 8088:8088 mockapi</code>
-        </div>
-        
-        <div class="download-card">
-          <h3>📦 Binaries</h3>
-          <p>Pre-built for your platform</p>
-          <a href="https://github.com/fynntang/MockAPI/releases" class="btn btn-secondary" style="margin-top:12px;">Download</a>
-        </div>
-      </div>
-      
-      <div style="margin-top: 48px;">
-        <a href="https://github.com/fynntang/MockAPI" class="btn">View on GitHub</a>
-      </div>
-      
-      <!-- Product Hunt Badge -->
-      <div style="margin-top: 32px;">
-        <a href="https://www.producthunt.com/products/mockapi-4?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-mockapi-4" target="_blank" rel="noopener noreferrer">
-          <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1095393&theme=dark&t=1773238471529" alt="MockAPI - Lightweight Local API Mock Server One binary Full-featured. | Product Hunt" width="250" height="54">
+      <h1 class="text-5xl md:text-7xl font-bold mb-6">
+        Lightweight Local<br>
+        <span class="gradient-text">API Mock Server</span>
+      </h1>
+      <p class="text-xl text-gray-400 mb-10 max-w-3xl mx-auto">
+        Zero dependencies. One binary. Full-featured mock server with Web UI, JavaScript scripts, 
+        WebSocket, GraphQL, gRPC, and Swagger import.
+      </p>
+      <div class="flex flex-col sm:flex-row justify-center gap-4 mb-12">
+        <a href="#download" class="btn-primary px-8 py-4 rounded-xl font-semibold text-lg inline-flex items-center justify-center">
+          🚀 Download Free
+        </a>
+        <a href="https://github.com/fynntang/MockAPI" class="px-8 py-4 rounded-xl font-semibold text-lg border border-white/10 hover:border-primary/50 transition inline-flex items-center justify-center">
+          ⭐ View on GitHub
         </a>
       </div>
+      
+      <!-- GitHub Badge -->
+      <div class="flex justify-center items-center gap-4 text-sm text-gray-400">
+        <a href="https://github.com/fynntang/MockAPI" class="flex items-center gap-2 hover:text-white transition">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-6.27 0-1.38.48-2.535 1.26-3.435-.12-.315-.54-1.65.12-3.435 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.785.24 3.12.12 3.435.78.9 1.26 2.055 1.26 3.435 0 4.95-2.805 5.97-5.475 6.27.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          <span>Star on GitHub</span>
+        </a>
+        <span>•</span>
+        <span>Built with Go</span>
+        <span>•</span>
+        <span>0 Runtime Dependencies</span>
+      </div>
     </div>
   </section>
 
-  <footer>
-    <div class="container">
-      <p>Built with ❤️ by <a href="https://github.com/fynntang" target="_blank">@fynntang</a></p>
-      <p style="margin-top: 8px;">Open Source • MIT License</p>
+  <!-- Features Grid -->
+  <section id="features" class="py-20 px-6 bg-darker/50">
+    <div class="max-w-7xl mx-auto">
+      <div class="text-center mb-16">
+        <h2 class="text-4xl font-bold mb-4">Everything You Need</h2>
+        <p class="text-gray-400 text-lg">Powerful features in a single binary</p>
+      </div>
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Feature Cards -->
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-4xl mb-4">🎨</div>
+          <h3 class="text-xl font-semibold mb-2">Web UI</h3>
+          <p class="text-gray-400 text-sm">Dark theme interface to visually manage all your mock routes. No config files needed.</p>
+        </div>
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-4xl mb-4">📜</div>
+          <h3 class="text-xl font-semibold mb-2">JavaScript Scripts</h3>
+          <p class="text-gray-400 text-sm">Write dynamic responses with full JavaScript. Access method, path, params, query, and body.</p>
+        </div>
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-4xl mb-4">📥</div>
+          <h3 class="text-xl font-semibold mb-2">Swagger Import</h3>
+          <p class="text-gray-400 text-sm">Import OpenAPI 2.0/3.x specs and auto-generate mock routes instantly.</p>
+        </div>
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-4xl mb-4">🔌</div>
+          <h3 class="text-xl font-semibold mb-2">WebSocket Mock</h3>
+          <p class="text-gray-400 text-sm">Mock WebSocket endpoints with auto-reply or JavaScript message handlers.</p>
+        </div>
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-4xl mb-4">⚡</div>
+          <h3 class="text-xl font-semibold mb-2">GraphQL Support</h3>
+          <p class="text-gray-400 text-sm">Mock GraphQL queries and mutations with operation-based matching.</p>
+        </div>
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-4xl mb-4">🔄</div>
+          <h3 class="text-xl font-semibold mb-2">Proxy Mode</h3>
+          <p class="text-gray-400 text-sm">Forward unmatched requests to real backend. Perfect for incremental mocking.</p>
+        </div>
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-4xl mb-4">⚙️</div>
+          <h3 class="text-xl font-semibold mb-2">Conditional Routes</h3>
+          <p class="text-gray-400 text-sm">Match by headers or body content. Different responses for different requests.</p>
+        </div>
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-4xl mb-4">🔀</div>
+          <h3 class="text-xl font-semibold mb-2">Dynamic Paths</h3>
+          <p class="text-gray-400 text-sm">Path parameters with :id syntax. Wildcards with * for catch-all routes.</p>
+        </div>
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-4xl mb-4">🚀</div>
+          <h3 class="text-xl font-semibold mb-2">Zero Dependencies</h3>
+          <p class="text-gray-400 text-sm">Single Go binary. No Node.js, no database, no runtime dependencies.</p>
+        </div>
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-4xl mb-4">🔥</div>
+          <h3 class="text-xl font-semibold mb-2">Hot Reload</h3>
+          <p class="text-gray-400 text-sm">Automatic configuration reload on file changes. No restart needed.</p>
+        </div>
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-4xl mb-4">🔒</div>
+          <h3 class="text-xl font-semibold mb-2">HTTPS/CORS</h3>
+          <p class="text-gray-400 text-sm">Built-in HTTPS support and configurable CORS policies.</p>
+        </div>
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-4xl mb-4">📦</div>
+          <h3 class="text-xl font-semibold mb-2">12+ Templates</h3>
+          <p class="text-gray-400 text-sm">Pre-built templates for common API patterns. Get started in seconds.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Performance Stats -->
+  <section id="performance" class="py-20 px-6">
+    <div class="max-w-7xl mx-auto">
+      <div class="text-center mb-16">
+        <h2 class="text-4xl font-bold mb-4">Blazing Fast Performance</h2>
+        <p class="text-gray-400 text-lg">Optimized for speed and efficiency</p>
+      </div>
+      <div class="grid md:grid-cols-4 gap-6">
+        <div class="stat-card p-8 rounded-2xl text-center">
+          <div class="text-5xl font-bold gradient-text mb-2">24x</div>
+          <div class="text-gray-400 text-sm">Faster Route Lookup</div>
+          <div class="text-xs text-gray-500 mt-2">5169ns → 215ns</div>
+        </div>
+        <div class="stat-card p-8 rounded-2xl text-center">
+          <div class="text-5xl font-bold gradient-text mb-2">94%</div>
+          <div class="text-gray-400 text-sm">Less Memory</div>
+          <div class="text-xs text-gray-500 mt-2">6400B → 68B per op</div>
+        </div>
+        <div class="stat-card p-8 rounded-2xl text-center">
+          <div class="text-5xl font-bold gradient-text mb-2">26</div>
+          <div class="text-gray-400 text-sm">Unit Tests</div>
+          <div class="text-xs text-gray-500 mt-2">Full coverage</div>
+        </div>
+        <div class="stat-card p-8 rounded-2xl text-center">
+          <div class="text-5xl font-bold gradient-text mb-2">0</div>
+          <div class="text-gray-400 text-sm">Runtime Dependencies</div>
+          <div class="text-xs text-gray-500 mt-2">Pure Go binary</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Code Demo -->
+  <section id="demo" class="py-20 px-6 bg-darker/50">
+    <div class="max-w-5xl mx-auto">
+      <div class="text-center mb-16">
+        <h2 class="text-4xl font-bold mb-4">Simple Yet Powerful</h2>
+        <p class="text-gray-400 text-lg">See how easy it is to create mock APIs</p>
+      </div>
+      <div class="grid md:grid-cols-2 gap-8">
+        <div class="code-block rounded-2xl overflow-hidden">
+          <div class="bg-darker px-4 py-3 border-b border-white/5 flex items-center justify-between">
+            <span class="text-sm text-gray-400">Create Route (Bash)</span>
+            <button class="text-xs text-primary hover:text-white transition" onclick="copyCode('code1')">Copy</button>
+          </div>
+          <pre class="!m-0 !p-4 !bg-transparent"><code id="code1" class="language-bash">curl -X POST http://localhost:8088/_api/routes \
+  -H "Content-Type: application/json" \
+  -d '{
+  "method": "GET",
+  "path": "/users/:id",
+  "status": 200,
+  "body": "{\"id\": {{id}}, \"name\": \"Alice\"}"
+}'</code></pre>
+        </div>
+        <div class="code-block rounded-2xl overflow-hidden">
+          <div class="bg-darker px-4 py-3 border-b border-white/5 flex items-center justify-between">
+            <span class="text-sm text-gray-400">Test Route (Bash)</span>
+            <button class="text-xs text-primary hover:text-white transition" onclick="copyCode('code2')">Copy</button>
+          </div>
+          <pre class="!m-0 !p-4 !bg-transparent"><code id="code2" class="language-bash">curl http://localhost:8088/mock/users/42
+
+# Response:
+{
+  "id": 42,
+  "name": "Alice"
+}</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section id="pricing" class="py-20 px-6">
+    <div class="max-w-7xl mx-auto">
+      <div class="text-center mb-16">
+        <h2 class="text-4xl font-bold mb-4">Simple, Transparent Pricing</h2>
+        <p class="text-gray-400 text-lg">Free for individuals, Pro for teams</p>
+      </div>
+      <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+        <!-- Free Tier -->
+        <div class="feature-card p-8 rounded-2xl">
+          <div class="mb-6">
+            <h3 class="text-2xl font-bold mb-2">Free</h3>
+            <div class="text-4xl font-bold">$0</div>
+            <div class="text-gray-400 text-sm">Forever</div>
+          </div>
+          <ul class="space-y-4 mb-8">
+            <li class="flex items-center space-x-3">
+              <span class="text-green-400">✓</span>
+              <span class="text-sm">All core features</span>
+            </li>
+            <li class="flex items-center space-x-3">
+              <span class="text-green-400">✓</span>
+              <span class="text-sm">Personal & commercial use</span>
+            </li>
+            <li class="flex items-center space-x-3">
+              <span class="text-green-400">✓</span>
+              <span class="text-sm">MIT License (Open Source)</span>
+            </li>
+            <li class="flex items-center space-x-3">
+              <span class="text-green-400">✓</span>
+              <span class="text-sm">Community support</span>
+            </li>
+            <li class="flex items-center space-x-3">
+              <span class="text-green-400">✓</span>
+              <span class="text-sm">12+ templates</span>
+            </li>
+          </ul>
+          <a href="#download" class="btn-primary block text-center py-3 rounded-xl font-semibold">
+            Download Free
+          </a>
+        </div>
+        <!-- Pro Tier -->
+        <div class="feature-card p-8 rounded-2xl border-primary/30 relative">
+          <div class="absolute -top-4 right-8 bg-primary px-4 py-1 rounded-full text-xs font-semibold">Coming Soon</div>
+          <div class="mb-6">
+            <h3 class="text-2xl font-bold mb-2">Pro</h3>
+            <div class="text-4xl font-bold">$15<span class="text-lg text-gray-400 font-normal">/month</span></div>
+            <div class="text-gray-400 text-sm">or ¥99/month</div>
+          </div>
+          <ul class="space-y-4 mb-8">
+            <li class="flex items-center space-x-3">
+              <span class="text-primary">✓</span>
+              <span class="text-sm">Everything in Free</span>
+            </li>
+            <li class="flex items-center space-x-3">
+              <span class="text-primary">✓</span>
+              <span class="text-sm">Team collaboration</span>
+            </li>
+            <li class="flex items-center space-x-3">
+              <span class="text-primary">✓</span>
+              <span class="text-sm">Cloud sync</span>
+            </li>
+            <li class="flex items-center space-x-3">
+              <span class="text-primary">✓</span>
+              <span class="text-sm">Advanced permissions</span>
+            </li>
+            <li class="flex items-center space-x-3">
+              <span class="text-primary">✓</span>
+              <span class="text-sm">Priority support</span>
+            </li>
+            <li class="flex items-center space-x-3">
+              <span class="text-primary">✓</span>
+              <span class="text-sm">Usage analytics</span>
+            </li>
+          </ul>
+          <button class="w-full py-3 rounded-xl font-semibold border border-primary/50 text-primary cursor-not-allowed opacity-60">
+            Coming Soon
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download -->
+  <section id="download" class="py-20 px-6 bg-darker/50">
+    <div class="max-w-7xl mx-auto text-center">
+      <h2 class="text-4xl font-bold mb-4">Get Started in Seconds</h2>
+      <p class="text-gray-400 text-lg mb-12">Download and run in seconds</p>
+      <div class="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+        <!-- Go Install -->
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-3xl mb-4">🐹</div>
+          <h3 class="text-lg font-semibold mb-2">From Source</h3>
+          <p class="text-gray-400 text-sm mb-4">Requires Go 1.21+</p>
+          <div class="code-block rounded-xl p-4 text-left">
+            <code class="language-bash text-sm">go install github.com/fynntang/MockAPI@latest</code>
+          </div>
+        </div>
+        <!-- Docker -->
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-3xl mb-4">🐳</div>
+          <h3 class="text-lg font-semibold mb-2">Docker</h3>
+          <p class="text-gray-400 text-sm mb-4">Containerized deployment</p>
+          <div class="code-block rounded-xl p-4 text-left">
+            <code class="language-bash text-sm">docker run -p 8088:8088 mockapi</code>
+          </div>
+        </div>
+        <!-- Binaries -->
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-3xl mb-4">📦</div>
+          <h3 class="text-lg font-semibold mb-2">Binaries</h3>
+          <p class="text-gray-400 text-sm mb-4">Pre-built for your platform</p>
+          <a href="https://github.com/fynntang/MockAPI/releases" class="text-primary text-sm hover:underline">
+            Download →
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer CTA -->
+  <footer class="py-20 px-6 border-t border-white/5">
+    <div class="max-w-7xl mx-auto text-center">
+      <h2 class="text-3xl font-bold mb-6">Ready to Start Mocking?</h2>
+      <div class="flex flex-col sm:flex-row justify-center gap-4 mb-12">
+        <a href="#download" class="btn-primary px-8 py-4 rounded-xl font-semibold text-lg">
+          Download Free
+        </a>
+        <a href="https://github.com/fynntang/MockAPI" class="px-8 py-4 rounded-xl font-semibold text-lg border border-white/10 hover:border-primary/50 transition">
+          View on GitHub
+        </a>
+      </div>
+      <div class="flex justify-center space-x-8 text-sm text-gray-400">
+        <a href="https://github.com/fynntang/MockAPI" class="hover:text-white transition">GitHub</a>
+        <a href="https://github.com/fynntang/MockAPI/issues" class="hover:text-white transition">Issues</a>
+        <a href="mailto:contact@mockapi.work" class="hover:text-white transition">Contact</a>
+      </div>
+      <div class="mt-8 text-xs text-gray-500">
+        © 2026 MockAPI. Built with Go. MIT License.
+      </div>
     </div>
   </footer>
 
   <script>
-    function showExample(name) {
-      document.querySelectorAll('.example-code pre').forEach(el => el.style.display = 'none');
-      document.getElementById('example-' + name).style.display = 'block';
-      
-      document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
-      event.target.classList.add('active');
+    function copyCode(id) {
+      const code = document.getElementById(id).textContent;
+      navigator.clipboard.writeText(code);
     }
   </script>
 </body>
