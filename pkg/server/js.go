@@ -3,6 +3,7 @@ package server
 const appJS = `
 const MOCK_BASE = "/mock";
 const API = "/_api/routes";
+const CONFIG_API = "/_api/config";
 
 document.getElementById("mock-url").textContent = location.origin + MOCK_BASE;
 
@@ -14,6 +15,7 @@ document.querySelectorAll(".tab").forEach(tab => {
     tab.classList.add("active");
     document.getElementById("tab-" + tab.dataset.tab).classList.add("active");
     if (tab.dataset.tab === "logs") loadLogs();
+    if (tab.dataset.tab === "settings") loadSettings();
   });
 });
 
@@ -43,11 +45,12 @@ async function loadRoutes() {
   el.innerHTML = filtered.map(r => {
     const mc = r.method.toLowerCase();
     const desc = r.description ? '<span class="desc">' + escapeHtml(r.description) + '</span>' : '';
+    const cond = (r.match_headers || r.match_body) ? '<span class="condition-badge" title="Conditional">⚡</span>' : '';
     return '<div class="route">' +
       '<div class="route-info">' +
         '<span class="method ' + mc + '">' + r.method + '</span>' +
         '<code>' + escapeHtml(r.path) + '</code>' +
-        desc +
+        cond + desc +
         '<span class="status">' + r.status + (r.delay ? ' · ' + r.delay + 'ms' : '') + '</span>' +
       '</div>' +
       '<div class="route-actions">' +
@@ -69,6 +72,8 @@ function openModal() {
   document.getElementById("f-desc").value = "";
   document.getElementById("f-body").value = "";
   document.getElementById("f-headers").value = "";
+  document.getElementById("f-match-headers").value = "";
+  document.getElementById("f-match-body").value = "";
   document.getElementById("modal").style.display = "";
 }
 
@@ -82,6 +87,8 @@ function editRoute(r) {
   document.getElementById("f-desc").value = r.description || "";
   document.getElementById("f-body").value = r.body || "";
   document.getElementById("f-headers").value = r.headers ? JSON.stringify(r.headers, null, 2) : "";
+  document.getElementById("f-match-headers").value = r.match_headers ? JSON.stringify(r.match_headers, null, 2) : "";
+  document.getElementById("f-match-body").value = r.match_body || "";
   document.getElementById("modal").style.display = "";
 }
 
@@ -96,6 +103,12 @@ async function saveRoute() {
     try { headers = JSON.parse(h); } catch(e) { alert("Invalid headers JSON"); return; }
   }
 
+  let matchHeaders = {};
+  const mh = document.getElementById("f-match-headers").value.trim();
+  if (mh) {
+    try { matchHeaders = JSON.parse(mh); } catch(e) { alert("Invalid match headers JSON"); return; }
+  }
+
   const route = {
     method: document.getElementById("f-method").value,
     path: document.getElementById("f-path").value,
@@ -104,22 +117,17 @@ async function saveRoute() {
     description: document.getElementById("f-desc").value.trim(),
     body: document.getElementById("f-body").value,
     headers: Object.keys(headers).length ? headers : undefined,
+    match_headers: Object.keys(matchHeaders).length ? matchHeaders : undefined,
+    match_body: document.getElementById("f-match-body").value.trim() || undefined,
   };
 
   if (!route.path) { alert("Path is required"); return; }
 
-  let url, method;
-  if (editingId) {
-    route.id = editingId;
-    url = API;
-    method = "PUT";
-  } else {
-    url = API;
-    method = "POST";
-  }
+  const httpMethod = editingId ? "PUT" : "POST";
+  if (editingId) route.id = editingId;
 
-  await fetch(url, {
-    method: method,
+  await fetch(API, {
+    method: httpMethod,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(route),
   });
@@ -141,19 +149,13 @@ function copyCurl(r) {
 }
 
 // --- Import / Export ---
-function exportRoutes() {
-  location.href = "/_api/export";
-}
+function exportRoutes() { location.href = "/_api/export"; }
 
 async function importRoutes(e) {
   const file = e.target.files[0];
   if (!file) return;
   const text = await file.text();
-  try {
-    JSON.parse(text);
-  } catch(err) {
-    alert("Invalid JSON file"); return;
-  }
+  try { JSON.parse(text); } catch(err) { alert("Invalid JSON file"); return; }
   const res = await fetch("/_api/import", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -172,15 +174,18 @@ async function openTemplates() {
   const templates = await res.json();
   document.getElementById("template-list").innerHTML = templates.map(t => {
     const mc = t.method.toLowerCase();
+    const cond = (t.match_headers || t.match_body) ? ' <span class="condition-badge">⚡</span>' : '';
     return '<div class="template-item" onclick="useTemplate(this)" ' +
       'data-method="' + t.method + '" data-path="' + escapeAttr(t.path) + '" ' +
       'data-status="' + t.status + '" data-delay="' + (t.delay||0) + '" ' +
       'data-desc="' + escapeAttr(t.description||'') + '" ' +
       'data-body="' + escapeAttr(t.body) + '" ' +
-      'data-headers="' + escapeAttr(t.headers ? JSON.stringify(t.headers) : '') + '">' +
+      'data-headers="' + escapeAttr(t.headers ? JSON.stringify(t.headers) : '') + '" ' +
+      'data-match-headers="' + escapeAttr(t.match_headers ? JSON.stringify(t.match_headers) : '') + '" ' +
+      'data-match-body="' + escapeAttr(t.match_body||'') + '">' +
       '<div class="template-top">' +
         '<span class="method ' + mc + '">' + t.method + '</span>' +
-        '<code>' + escapeHtml(t.path) + '</code>' +
+        '<code>' + escapeHtml(t.path) + '</code>' + cond +
         '<span class="status">' + t.status + (t.delay ? ' · ' + t.delay + 'ms' : '') + '</span>' +
       '</div>' +
       (t.description ? '<div class="template-desc">' + escapeHtml(t.description) + '</div>' : '') +
@@ -188,9 +193,7 @@ async function openTemplates() {
   }).join("");
 }
 
-function closeTemplates() {
-  document.getElementById("templates-modal").style.display = "none";
-}
+function closeTemplates() { document.getElementById("templates-modal").style.display = "none"; }
 
 function useTemplate(el) {
   const d = el.dataset;
@@ -201,6 +204,8 @@ function useTemplate(el) {
   document.getElementById("f-desc").value = d.desc;
   document.getElementById("f-body").value = d.body;
   document.getElementById("f-headers").value = d.headers || "";
+  document.getElementById("f-match-headers").value = d.matchHeaders || "";
+  document.getElementById("f-match-body").value = d.matchBody || "";
   closeTemplates();
   document.getElementById("modal").style.display = "";
   document.getElementById("modal-title").textContent = "Add Mock Route";
@@ -215,17 +220,15 @@ async function loadLogs() {
   const empty = document.getElementById("logs-empty");
   document.getElementById("log-count").textContent = logs.length + " requests";
 
-  if (logs.length === 0) {
-    el.innerHTML = "";
-    empty.style.display = "";
-    return;
-  }
+  if (logs.length === 0) { el.innerHTML = ""; empty.style.display = ""; return; }
   empty.style.display = "none";
 
   el.innerHTML = logs.slice().reverse().map(l => {
     const sc = l.status >= 200 && l.status < 300 ? 'ok' : l.status >= 400 ? 'err' : '';
+    const px = l.proxied ? '<span class="proxy-badge">PROXY</span>' : '';
     return '<div class="log-item">' +
       '<span class="log-time">' + l.timestamp + '</span>' +
+      px +
       '<span class="method ' + l.method.toLowerCase() + '">' + l.method + '</span>' +
       '<code>' + escapeHtml(l.path) + '</code>' +
       '<span class="log-status ' + sc + '">' + l.status + '</span>' +
@@ -240,6 +243,28 @@ async function clearLogs() {
   loadLogs();
 }
 
+// --- Settings ---
+async function loadSettings() {
+  const res = await fetch(CONFIG_API);
+  const cfg = await res.json();
+  document.getElementById("s-proxy").value = cfg.proxy_url || "";
+  document.getElementById("s-cors").checked = cfg.cors_enabled;
+  document.getElementById("s-maxlogs").value = cfg.max_logs || 500;
+}
+
+async function saveSettings() {
+  await fetch(CONFIG_API, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      proxy_url: document.getElementById("s-proxy").value.trim(),
+      cors_enabled: document.getElementById("s-cors").checked,
+      max_logs: parseInt(document.getElementById("s-maxlogs").value) || 500,
+    }),
+  });
+  alert("Settings saved!");
+}
+
 // --- Utils ---
 function escapeHtml(s) {
   return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
@@ -250,9 +275,7 @@ function escapeAttr(s) {
 
 // Auto-refresh logs
 setInterval(() => {
-  if (document.getElementById("tab-logs").classList.contains("active")) {
-    loadLogs();
-  }
+  if (document.getElementById("tab-logs").classList.contains("active")) loadLogs();
 }, 3000);
 
 loadRoutes();

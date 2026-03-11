@@ -4,11 +4,11 @@ import (
 	"strings"
 )
 
-// matchPath supports:
+// MatchPath supports:
 //   - exact: /users
 //   - param: /users/:id
 //   - wildcard: /users/*
-func matchPath(pattern, path string) bool {
+func MatchPath(pattern, path string) bool {
 	pParts := strings.Split(strings.Trim(pattern, "/"), "/")
 	uParts := strings.Split(strings.Trim(path, "/"), "/")
 

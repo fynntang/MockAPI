@@ -15,6 +15,9 @@ type Route struct {
 	Headers     map[string]string `json:"headers,omitempty"`
 	Delay       int               `json:"delay_ms,omitempty"`
 	Description string            `json:"description,omitempty"`
+	// Conditional matching
+	MatchHeaders map[string]string `json:"match_headers,omitempty"` // must have these headers
+	MatchBody    string            `json:"match_body,omitempty"`    // must contain this in body
 }
 
 type RequestLog struct {
@@ -26,6 +29,7 @@ type RequestLog struct {
 	RouteID   string `json:"route_id,omitempty"`
 	Timestamp string `json:"timestamp"`
 	Body      string `json:"body,omitempty"`
+	Proxied   bool   `json:"proxied,omitempty"`
 }
 
 type Config struct {
@@ -34,6 +38,7 @@ type Config struct {
 	Logs       []RequestLog `json:"logs,omitempty"`
 	CORSEnabled bool        `json:"cors_enabled"`
 	MaxLogs    int          `json:"max_logs"`
+	ProxyURL   string       `json:"proxy_url,omitempty"` // forward unmatched requests
 	mu         sync.Mutex
 }
 
@@ -44,6 +49,7 @@ func Default() *Config {
 		Logs:        []RequestLog{},
 		CORSEnabled: true,
 		MaxLogs:     500,
+		ProxyURL:    "",
 	}
 }
 
@@ -107,7 +113,7 @@ func (c *Config) FindRoute(method, path string) *Route {
 		if c.Routes[i].Method != method && c.Routes[i].Method != "ALL" {
 			continue
 		}
-		if matchPath(c.Routes[i].Path, path) {
+		if MatchPath(c.Routes[i].Path, path) {
 			r := c.Routes[i]
 			return &r
 		}

@@ -165,4 +165,37 @@ button.del:hover { background: #f8514922; }
 .template-item:hover { border-color: #58a6ff; background: #161b22; }
 .template-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .template-desc { font-size: 12px; color: #8b949e; }
+
+/* Settings */
+.settings { max-width: 600px; }
+.setting-group {
+  background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+  padding: 20px; margin-bottom: 16px;
+}
+.setting-group h3 { font-size: 16px; margin-bottom: 8px; }
+.setting-desc { font-size: 13px; color: #8b949e; margin-bottom: 16px; }
+.setting-row {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+}
+.setting-row label { min-width: 100px; font-size: 14px; color: #c9d1d9; }
+.setting-row input[type="text"], .setting-row input[type="number"] {
+  background: #0d1117; border: 1px solid #30363d; border-radius: 6px;
+  padding: 8px 12px; color: #c9d1d9; font-size: 14px;
+}
+.save-btn {
+  background: #238636; color: #fff; border: none; padding: 7px 16px;
+  border-radius: 6px; font-size: 13px; cursor: pointer; margin-top: 8px;
+}
+.save-btn:hover { background: #2ea043; }
+
+/* Condition badge */
+.condition-badge {
+  display: inline-block; background: #a371f733; color: #a371f7;
+  font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: 700;
+}
+.proxy-badge {
+  display: inline-block; background: #1f6feb33; color: #58a6ff;
+  font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: 700;
+}
+.conditions-header { margin-top: 8px; padding-top: 8px; border-top: 1px solid #21262d; }
 `

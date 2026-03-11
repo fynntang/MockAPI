@@ -2,10 +2,13 @@ package server
 
 import (
 	"crypto/rand"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"strings"
 	"time"
 
@@ -17,6 +20,9 @@ type Server struct {
 	configFile string
 	mux        *http.ServeMux
 	port       int
+	https      bool
+	certFile   string
+	keyFile    string
 }
 
 func New(cfg *config.Config, configFile string) *Server {
@@ -28,6 +34,12 @@ func New(cfg *config.Config, configFile string) *Server {
 	}
 	s.registerRoutes()
 	return s
+}
+
+func (s *Server) EnableHTTPS(certFile, keyFile string) {
+	s.https = true
+	s.certFile = certFile
+	s.keyFile = keyFile
 }
 
 func (s *Server) registerRoutes() {
@@ -43,6 +55,7 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/_api/export", s.handleExport)
 	s.mux.HandleFunc("/_api/clear-logs", s.handleClearLogs)
 	s.mux.HandleFunc("/_api/templates", s.handleTemplates)
+	s.mux.HandleFunc("/_api/config", s.handleAPIConfig)
 
 	// Mock routes - catch all
 	s.mux.HandleFunc("/mock/", s.handleMock)
@@ -112,6 +125,40 @@ func (s *Server) handleAPIRoutes(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// --- Config ---
+
+func (s *Server) handleAPIConfig(w http.ResponseWriter, r *http.Request) {
+	s.cors(w, r)
+	w.Header().Set("Content-Type", "application/json")
+
+	switch r.Method {
+	case http.MethodGet:
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"port":         s.cfg.Port,
+			"cors_enabled": s.cfg.CORSEnabled,
+			"proxy_url":    s.cfg.ProxyURL,
+			"max_logs":     s.cfg.MaxLogs,
+		})
+	case http.MethodPut:
+		var body map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, err.Error(), 400)
+			return
+		}
+		if v, ok := body["cors_enabled"].(bool); ok {
+			s.cfg.CORSEnabled = v
+		}
+		if v, ok := body["proxy_url"].(string); ok {
+			s.cfg.ProxyURL = strings.TrimSuffix(v, "/")
+		}
+		if v, ok := body["max_logs"].(float64); ok {
+			s.cfg.MaxLogs = int(v)
+		}
+		s.cfg.Save(s.configFile)
+		w.WriteHeader(204)
+	}
+}
+
 // --- Logs ---
 
 func (s *Server) handleAPILogs(w http.ResponseWriter, r *http.Request) {
@@ -167,26 +214,43 @@ func (s *Server) handleTemplates(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(templates)
 }
 
-// --- Mock handler ---
+// --- Mock handler with proxy fallback ---
 
 func (s *Server) handleMock(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	method := strings.ToUpper(r.Method)
 	path := strings.TrimPrefix(r.URL.Path, "/mock")
 
-	route := s.cfg.FindRoute(method, path)
+	// Read request body for conditional matching & logging
+	reqBodyBytes, _ := io.ReadAll(io.LimitReader(r.Body, 64*1024))
+	reqBody := string(reqBodyBytes)
+
+	// Restore body for proxy
+	r.Body = io.NopCloser(strings.NewReader(reqBody))
+
+	route := findRoute(s.cfg, method, path, r.Header, reqBody)
 
 	var status int
 	var body string
 	var routeID string
+	var proxied bool
 
 	if route == nil {
-		status = 404
-		body = fmt.Sprintf(`{"error":"no mock found","method":"%s","path":"%s","hint":"add a route via Web UI or /_api/routes"}`, method, path)
+		// Try proxy
+		if s.cfg.ProxyURL != "" {
+			proxied = s.proxyRequest(w, r, path)
+			if !proxied {
+				status = 502
+				body = `{"error":"proxy failed","message":"backend unreachable"}`
+			}
+		}
+		if !proxied {
+			status = 404
+			body = fmt.Sprintf(`{"error":"no mock found","method":"%s","path":"%s","hint":"add a route via Web UI or /_api/routes"}`, method, path)
+		}
 	} else {
 		status = route.Status
 		routeID = route.ID
-		// Parse path params into body
 		body = config.ParsePath(route.Path, path, route.Body)
 
 		if route.Delay > 0 {
@@ -198,29 +262,55 @@ func (s *Server) handleMock(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if w.Header().Get("Content-Type") == "" {
-		w.Header().Set("Content-Type", "application/json")
+	if !proxied {
+		if w.Header().Get("Content-Type") == "" {
+			w.Header().Set("Content-Type", "application/json")
+		}
+		w.WriteHeader(status)
+		fmt.Fprint(w, body)
 	}
-	w.WriteHeader(status)
-	fmt.Fprint(w, body)
 
-	// Log the request
+	// Log
 	elapsed := time.Since(start)
-	reqBody := ""
-	if r.Body != nil {
-		b, _ := io.ReadAll(io.LimitReader(r.Body, 1024))
-		reqBody = string(b)
+	logStatus := status
+	if proxied {
+		logStatus = 200 // simplified
 	}
 	s.cfg.AddLog(config.RequestLog{
 		ID:        generateID(),
 		Method:    method,
 		Path:      path,
-		Status:    status,
+		Status:    logStatus,
 		Delay:     int(elapsed.Milliseconds()),
 		RouteID:   routeID,
 		Timestamp: config.Now(),
-		Body:      reqBody,
+		Body:      truncate(reqBody, 500),
+		Proxied:   proxied,
 	})
+}
+
+// --- Proxy ---
+
+func (s *Server) proxyRequest(w http.ResponseWriter, r *http.Request, path string) bool {
+	target, err := url.Parse(s.cfg.ProxyURL)
+	if err != nil {
+		return false
+	}
+
+	proxy := httputil.NewSingleHostReverseProxy(target)
+	origDirector := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		origDirector(req)
+		req.URL.Path = path
+		req.Host = target.Host
+	}
+
+	proxy.Transport = &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+
+	proxy.ServeHTTP(w, r)
+	return true
 }
 
 // --- CORS ---
@@ -237,20 +327,83 @@ func (s *Server) cors(w http.ResponseWriter, r *http.Request) {
 // --- Start ---
 
 func (s *Server) Start() error {
+	protocol := "http"
+	if s.https {
+		protocol = "https"
+	}
+
+	proxyNote := ""
+	if s.cfg.ProxyURL != "" {
+		proxyNote = fmt.Sprintf("   Proxy:    %s\n", s.cfg.ProxyURL)
+	}
+
 	fmt.Printf(`
 🦞 MockAPI Server running!
-   Web UI:    http://localhost:%d/
-   Mock base: http://localhost:%d/mock/
-   API:       http://localhost:%d/_api/routes
+   Web UI:    %s://localhost:%d/
+   Mock base: %s://localhost:%d/mock/
+   API:       %s://localhost:%d/_api/routes
    Config:    %s
-`, s.port, s.port, s.port, s.configFile)
+%s
+`, protocol, s.port, protocol, s.port, protocol, s.port, s.configFile, proxyNote)
+
+	if s.https {
+		cfg := &tls.Config{MinVersion: tls.VersionTLS12}
+		server := &http.Server{
+			Addr:      fmt.Sprintf(":%d", s.port),
+			Handler:   s.mux,
+			TLSConfig: cfg,
+		}
+		return server.ListenAndServeTLS(s.certFile, s.keyFile)
+	}
 	return http.ListenAndServe(fmt.Sprintf(":%d", s.port), s.mux)
 }
+
+// --- Helpers ---
 
 func generateID() string {
 	b := make([]byte, 8)
 	rand.Read(b)
 	return fmt.Sprintf("%x", b)
+}
+
+func truncate(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	return s[:max] + "..."
+}
+
+// --- FindRoute with conditions (server-level) ---
+
+func findRoute(cfg *config.Config, method, path string, headers http.Header, reqBody string) *config.Route {
+	// Use the simple FindRoute first for path/method match, then filter by conditions
+	// We iterate directly since we need conditional checks
+	for _, r := range cfg.Routes {
+		if r.Method != method && r.Method != "ALL" {
+			continue
+		}
+		if !config.MatchPath(r.Path, path) {
+			continue
+		}
+		if !matchHeaders(r.MatchHeaders, headers) {
+			continue
+		}
+		if r.MatchBody != "" && !strings.Contains(reqBody, r.MatchBody) {
+			continue
+		}
+		cp := r
+		return &cp
+	}
+	return nil
+}
+
+func matchHeaders(required map[string]string, actual http.Header) bool {
+	for k, v := range required {
+		if actual.Get(k) != v {
+			return false
+		}
+	}
+	return true
 }
 
 // --- Preset templates ---
@@ -307,9 +460,15 @@ var templates = []config.Route{
 	},
 	{
 		Method: "POST", Path: "/auth/login", Status: 200,
-		Description: "Login",
+		Description: "Login success",
 		Headers: map[string]string{"X-Auth-Token": "mock-token-abc123"},
 		Body: `{"token": "mock-token-abc123", "user": {"id": 1, "name": "Alice"}}`,
+	},
+	{
+		Method: "POST", Path: "/auth/login", Status: 401,
+		Description: "Login fail (when body contains 'wrong')",
+		MatchBody: "wrong",
+		Body: `{"error": "invalid credentials"}`,
 	},
 	{
 		Method: "GET", Path: "/health", Status: 200,
@@ -326,5 +485,10 @@ var templates = []config.Route{
 		Method: "GET", Path: "/api/*", Status: 404,
 		Description: "Generic 404 for /api/*",
 		Body: `{"error": "not found", "code": 404}`,
+	},
+	{
+		Method: "GET", Path: "/items", Status: 200,
+		Description: "Paginated list",
+		Body: `{"items": [{"id":1},{"id":2}],"total": 42,"page": 1,"per_page": 20}`,
 	},
 }
