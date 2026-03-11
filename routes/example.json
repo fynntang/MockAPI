@@ -1,0 +1,8 @@
+{
+  "id": "example",
+  "method": "GET",
+  "path": "/hello",
+  "status": 200,
+  "body": "{\"message\": \"Hello from MockAPI!\"}",
+  "description": "Example route"
+}
