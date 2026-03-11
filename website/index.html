@@ -30,6 +30,7 @@
     body {
       background: linear-gradient(135deg, #080810 0%, #0F0F1A 50%, #1A1A2E 100%);
       min-height: 100vh;
+      scroll-behavior: smooth;
     }
     .gradient-text {
       background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%);
@@ -45,25 +46,63 @@
     .feature-card:hover {
       background: rgba(139, 92, 246, 0.1);
       border-color: rgba(139, 92, 246, 0.3);
-      transform: translateY(-2px);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(139, 92, 246, 0.15);
     }
     .btn-primary {
       background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%);
       transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-primary::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s;
+    }
+    .btn-primary:hover::before {
+      left: 100%;
     }
     .btn-primary:hover {
       opacity: 0.9;
-      transform: translateY(-1px);
-      box-shadow: 0 10px 40px rgba(139, 92, 246, 0.3);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 40px rgba(139, 92, 246, 0.4);
     }
     .stat-card {
       background: rgba(255, 255, 255, 0.02);
       border: 1px solid rgba(255, 255, 255, 0.05);
+      transition: all 0.3s ease;
+    }
+    .stat-card:hover {
+      background: rgba(255, 255, 255, 0.04);
+      transform: translateY(-4px);
     }
     .code-block {
       background: #1A1A2E;
       border: 1px solid rgba(139, 92, 246, 0.2);
     }
+    /* Fade-in animation */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .animate-fade-in {
+      animation: fadeInUp 0.8s ease-out forwards;
+    }
+    .delay-100 { animation-delay: 0.1s; }
+    .delay-200 { animation-delay: 0.2s; }
+    .delay-300 { animation-delay: 0.3s; }
   </style>
 </head>
 <body class="text-gray-100">
@@ -90,18 +129,18 @@
   <!-- Hero Section -->
   <section class="pt-32 pb-20 px-6">
     <div class="max-w-7xl mx-auto text-center">
-      <div class="inline-flex items-center space-x-2 bg-primary/10 border border-primary/20 rounded-full px-4 py-2 mb-8">
+      <div class="inline-flex items-center space-x-2 bg-primary/10 border border-primary/20 rounded-full px-4 py-2 mb-8 animate-fade-in">
         <span class="text-primary text-sm">✨ Now with CLI commands</span>
       </div>
-      <h1 class="text-5xl md:text-7xl font-bold mb-6">
+      <h1 class="text-5xl md:text-7xl font-bold mb-6 animate-fade-in delay-100">
         Lightweight Local<br>
         <span class="gradient-text">API Mock Server</span>
       </h1>
-      <p class="text-xl text-gray-400 mb-10 max-w-3xl mx-auto">
+      <p class="text-xl text-gray-400 mb-10 max-w-3xl mx-auto animate-fade-in delay-200">
         Zero dependencies. One binary. Full-featured mock server with Web UI, JavaScript scripts, 
         WebSocket, GraphQL, gRPC, and Swagger import.
       </p>
-      <div class="flex flex-col sm:flex-row justify-center gap-4 mb-12">
+      <div class="flex flex-col sm:flex-row justify-center gap-4 mb-8">
         <a href="#download" class="btn-primary px-8 py-4 rounded-xl font-semibold text-lg inline-flex items-center justify-center">
           🚀 Download Free
         </a>
@@ -110,15 +149,22 @@
         </a>
       </div>
       
+      <!-- Product Hunt Badge -->
+      <div class="flex justify-center mb-8">
+        <a href="https://www.producthunt.com/posts/mockapi-4?utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-mockapi-4" target="_blank" rel="noopener noreferrer">
+          <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=mockapi-4&theme=dark" alt="MockAPI - Lightweight Local API Mock Server | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" />
+        </a>
+      </div>
+      
       <!-- GitHub Badge -->
-      <div class="flex justify-center items-center gap-4 text-sm text-gray-400">
+      <div class="flex flex-wrap justify-center items-center gap-4 text-sm text-gray-400">
         <a href="https://github.com/fynntang/MockAPI" class="flex items-center gap-2 hover:text-white transition">
           <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-6.27 0-1.38.48-2.535 1.26-3.435-.12-.315-.54-1.65.12-3.435 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.785.24 3.12.12 3.435.78.9 1.26 2.055 1.26 3.435 0 4.95-2.805 5.97-5.475 6.27.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
           <span>Star on GitHub</span>
         </a>
-        <span>•</span>
+        <span class="hidden sm:inline">•</span>
         <span>Built with Go</span>
-        <span>•</span>
+        <span class="hidden sm:inline">•</span>
         <span>0 Runtime Dependencies</span>
       </div>
     </div>
