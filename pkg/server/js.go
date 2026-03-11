@@ -2,10 +2,13 @@ package server
 
 const appJS = `
 const MOCK_BASE = "/mock";
+const WS_BASE = "/ws";
 const API = "/_api/routes";
 const CONFIG_API = "/_api/config";
+const WS_API = "/_api/ws";
 
 document.getElementById("mock-url").textContent = location.origin + MOCK_BASE;
+document.getElementById("ws-url").textContent = location.origin + WS_BASE;
 
 // --- Tabs ---
 document.querySelectorAll(".tab").forEach(tab => {
@@ -16,6 +19,7 @@ document.querySelectorAll(".tab").forEach(tab => {
     document.getElementById("tab-" + tab.dataset.tab).classList.add("active");
     if (tab.dataset.tab === "logs") loadLogs();
     if (tab.dataset.tab === "settings") loadSettings();
+    if (tab.dataset.tab === "ws") loadWSHandlers();
   });
 });
 
@@ -35,22 +39,19 @@ async function loadRoutes() {
     (r.description || "").toLowerCase().includes(filter)
   );
 
-  if (filtered.length === 0) {
-    el.innerHTML = "";
-    empty.style.display = "";
-    return;
-  }
+  if (filtered.length === 0) { el.innerHTML = ""; empty.style.display = ""; return; }
   empty.style.display = "none";
 
   el.innerHTML = filtered.map(r => {
     const mc = r.method.toLowerCase();
     const desc = r.description ? '<span class="desc">' + escapeHtml(r.description) + '</span>' : '';
     const cond = (r.match_headers || r.match_body) ? '<span class="condition-badge" title="Conditional">⚡</span>' : '';
+    const scriptBadge = r.script ? '<span class="script-badge" title="Script">📜</span>' : '';
     return '<div class="route">' +
       '<div class="route-info">' +
         '<span class="method ' + mc + '">' + r.method + '</span>' +
         '<code>' + escapeHtml(r.path) + '</code>' +
-        cond + desc +
+        scriptBadge + cond + desc +
         '<span class="status">' + r.status + (r.delay ? ' · ' + r.delay + 'ms' : '') + '</span>' +
       '</div>' +
       '<div class="route-actions">' +
@@ -72,8 +73,11 @@ function openModal() {
   document.getElementById("f-desc").value = "";
   document.getElementById("f-body").value = "";
   document.getElementById("f-headers").value = "";
+  document.getElementById("f-script").value = "";
   document.getElementById("f-match-headers").value = "";
   document.getElementById("f-match-body").value = "";
+  document.getElementById("f-type").value = "static";
+  toggleResponseType();
   document.getElementById("modal").style.display = "";
 }
 
@@ -87,39 +91,50 @@ function editRoute(r) {
   document.getElementById("f-desc").value = r.description || "";
   document.getElementById("f-body").value = r.body || "";
   document.getElementById("f-headers").value = r.headers ? JSON.stringify(r.headers, null, 2) : "";
+  document.getElementById("f-script").value = r.script || "";
   document.getElementById("f-match-headers").value = r.match_headers ? JSON.stringify(r.match_headers, null, 2) : "";
   document.getElementById("f-match-body").value = r.match_body || "";
+  document.getElementById("f-type").value = r.script ? "script" : "static";
+  toggleResponseType();
   document.getElementById("modal").style.display = "";
 }
 
-function closeModal() {
-  document.getElementById("modal").style.display = "none";
+function closeModal() { document.getElementById("modal").style.display = "none"; }
+
+function toggleResponseType() {
+  const type = document.getElementById("f-type").value;
+  document.getElementById("static-response").style.display = type === "static" ? "" : "none";
+  document.getElementById("script-response").style.display = type === "script" ? "" : "none";
 }
 
 async function saveRoute() {
   let headers = {};
   const h = document.getElementById("f-headers").value.trim();
-  if (h) {
-    try { headers = JSON.parse(h); } catch(e) { alert("Invalid headers JSON"); return; }
-  }
+  if (h) { try { headers = JSON.parse(h); } catch(e) { alert("Invalid headers JSON"); return; } }
 
   let matchHeaders = {};
   const mh = document.getElementById("f-match-headers").value.trim();
-  if (mh) {
-    try { matchHeaders = JSON.parse(mh); } catch(e) { alert("Invalid match headers JSON"); return; }
-  }
+  if (mh) { try { matchHeaders = JSON.parse(mh); } catch(e) { alert("Invalid match headers JSON"); return; } }
 
+  const type = document.getElementById("f-type").value;
+  
   const route = {
     method: document.getElementById("f-method").value,
     path: document.getElementById("f-path").value,
     status: parseInt(document.getElementById("f-status").value),
     delay: parseInt(document.getElementById("f-delay").value) || 0,
     description: document.getElementById("f-desc").value.trim(),
-    body: document.getElementById("f-body").value,
     headers: Object.keys(headers).length ? headers : undefined,
     match_headers: Object.keys(matchHeaders).length ? matchHeaders : undefined,
     match_body: document.getElementById("f-match-body").value.trim() || undefined,
   };
+
+  if (type === "script") {
+    route.script = document.getElementById("f-script").value;
+    route.body = "";
+  } else {
+    route.body = document.getElementById("f-body").value;
+  }
 
   if (!route.path) { alert("Path is required"); return; }
 
@@ -146,6 +161,108 @@ function copyCurl(r) {
   const url = location.origin + MOCK_BASE + r.path;
   const cmd = "curl -X " + r.method + " " + url;
   navigator.clipboard.writeText(cmd);
+}
+
+// --- Swagger Import ---
+function openSwaggerModal() { document.getElementById("swagger-modal").style.display = ""; }
+function closeSwaggerModal() { document.getElementById("swagger-modal").style.display = "none"; }
+
+function loadSwaggerFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => { document.getElementById("swagger-input").value = ev.target.result; };
+  reader.readAsText(file);
+}
+
+async function importSwagger() {
+  const input = document.getElementById("swagger-input").value.trim();
+  if (!input) { alert("Please paste or upload an OpenAPI spec"); return; }
+  
+  const res = await fetch("/_api/import-swagger", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: input,
+  });
+  
+  if (!res.ok) { const err = await res.text(); alert("Import failed: " + err); return; }
+  
+  const data = await res.json();
+  alert("Imported " + data.imported + " routes from OpenAPI spec!");
+  closeSwaggerModal();
+  loadRoutes();
+}
+
+// --- WebSocket ---
+async function loadWSHandlers() {
+  const res = await fetch(WS_API);
+  const handlers = await res.json();
+  const el = document.getElementById("ws-handlers");
+  const empty = document.getElementById("ws-empty");
+
+  if (handlers.length === 0) { el.innerHTML = ""; empty.style.display = ""; return; }
+  empty.style.display = "none";
+
+  el.innerHTML = handlers.map(h => {
+    const desc = h.description ? '<span class="desc">' + escapeHtml(h.description) + '</span>' : '';
+    return '<div class="route">' +
+      '<div class="route-info">' +
+        '<span class="method ws">WS</span>' +
+        '<code>' + escapeHtml(h.path) + '</code>' +
+        desc +
+        (h.delay ? '<span class="status">' + h.delay + 'ms</span>' : '') +
+      '</div>' +
+      '<div class="route-actions">' +
+        '<button class="copy" onclick="copyWSUrl(\'' + escapeHtml(h.path) + '\')" title="Copy URL">📋</button>' +
+        '<button class="del" onclick="deleteWSHandler(\'' + escapeHtml(h.path) + '\')" title="Delete">✕</button>' +
+      '</div>' +
+    '</div>';
+  }).join("");
+}
+
+function openWSModal() {
+  document.getElementById("ws-path").value = "";
+  document.getElementById("ws-desc").value = "";
+  document.getElementById("ws-delay").value = "0";
+  document.getElementById("ws-auto-reply").value = "";
+  document.getElementById("ws-on-connect").value = "";
+  document.getElementById("ws-on-message").value = "";
+  document.getElementById("ws-modal").style.display = "";
+}
+
+function closeWSModal() { document.getElementById("ws-modal").style.display = "none"; }
+
+async function saveWSHandler() {
+  const h = {
+    path: document.getElementById("ws-path").value,
+    description: document.getElementById("ws-desc").value,
+    delay: parseInt(document.getElementById("ws-delay").value) || 0,
+    auto_reply: document.getElementById("ws-auto-reply").value,
+    on_connect: document.getElementById("ws-on-connect").value,
+    on_message: document.getElementById("ws-on-message").value,
+  };
+  if (!h.path) { alert("Path is required"); return; }
+
+  await fetch(WS_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(h),
+  });
+
+  closeWSModal();
+  loadWSHandlers();
+}
+
+async function deleteWSHandler(path) {
+  if (!confirm("Delete this WebSocket handler?")) return;
+  await fetch(WS_API + "?path=" + encodeURIComponent(path), { method: "DELETE" });
+  loadWSHandlers();
+}
+
+function copyWSUrl(path) {
+  const url = location.origin.replace("http", "ws") + WS_BASE + path;
+  navigator.clipboard.writeText(url);
+  alert("Copied: " + url);
 }
 
 // --- Import / Export ---
@@ -175,17 +292,19 @@ async function openTemplates() {
   document.getElementById("template-list").innerHTML = templates.map(t => {
     const mc = t.method.toLowerCase();
     const cond = (t.match_headers || t.match_body) ? ' <span class="condition-badge">⚡</span>' : '';
+    const scr = t.script ? ' <span class="script-badge">📜</span>' : '';
     return '<div class="template-item" onclick="useTemplate(this)" ' +
       'data-method="' + t.method + '" data-path="' + escapeAttr(t.path) + '" ' +
       'data-status="' + t.status + '" data-delay="' + (t.delay||0) + '" ' +
       'data-desc="' + escapeAttr(t.description||'') + '" ' +
       'data-body="' + escapeAttr(t.body) + '" ' +
       'data-headers="' + escapeAttr(t.headers ? JSON.stringify(t.headers) : '') + '" ' +
+      'data-script="' + escapeAttr(t.script||'') + '" ' +
       'data-match-headers="' + escapeAttr(t.match_headers ? JSON.stringify(t.match_headers) : '') + '" ' +
       'data-match-body="' + escapeAttr(t.match_body||'') + '">' +
       '<div class="template-top">' +
         '<span class="method ' + mc + '">' + t.method + '</span>' +
-        '<code>' + escapeHtml(t.path) + '</code>' + cond +
+        '<code>' + escapeHtml(t.path) + '</code>' + scr + cond +
         '<span class="status">' + t.status + (t.delay ? ' · ' + t.delay + 'ms' : '') + '</span>' +
       '</div>' +
       (t.description ? '<div class="template-desc">' + escapeHtml(t.description) + '</div>' : '') +
@@ -204,8 +323,11 @@ function useTemplate(el) {
   document.getElementById("f-desc").value = d.desc;
   document.getElementById("f-body").value = d.body;
   document.getElementById("f-headers").value = d.headers || "";
+  document.getElementById("f-script").value = d.script || "";
   document.getElementById("f-match-headers").value = d.matchHeaders || "";
   document.getElementById("f-match-body").value = d.matchBody || "";
+  document.getElementById("f-type").value = d.script ? "script" : "static";
+  toggleResponseType();
   closeTemplates();
   document.getElementById("modal").style.display = "";
   document.getElementById("modal-title").textContent = "Add Mock Route";
@@ -237,7 +359,7 @@ async function loadLogs() {
   }).join("");
 }
 
-async function clearLogs() {
+async function clearLog() {
   if (!confirm("Clear all logs?")) return;
   await fetch("/_api/clear-logs", { method: "POST" });
   loadLogs();

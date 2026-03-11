@@ -13,24 +13,31 @@ import (
 	"time"
 
 	"mockapi/pkg/config"
+	"mockapi/pkg/script"
+	"mockapi/pkg/swagger"
+	"mockapi/pkg/ws"
 )
 
 type Server struct {
-	cfg        *config.Config
-	configFile string
-	mux        *http.ServeMux
-	port       int
-	https      bool
-	certFile   string
-	keyFile    string
+	cfg         *config.Config
+	configFile  string
+	mux         *http.ServeMux
+	port        int
+	https       bool
+	certFile    string
+	keyFile     string
+	scriptEngine *script.Engine
+	wsMock      *ws.MockWS
 }
 
 func New(cfg *config.Config, configFile string) *Server {
 	s := &Server{
-		cfg:        cfg,
-		configFile: configFile,
-		mux:        http.NewServeMux(),
-		port:       cfg.Port,
+		cfg:         cfg,
+		configFile:  configFile,
+		mux:         http.NewServeMux(),
+		port:        cfg.Port,
+		scriptEngine: script.New(),
+		wsMock:      ws.New(),
 	}
 	s.registerRoutes()
 	return s
@@ -56,9 +63,14 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/_api/clear-logs", s.handleClearLogs)
 	s.mux.HandleFunc("/_api/templates", s.handleTemplates)
 	s.mux.HandleFunc("/_api/config", s.handleAPIConfig)
+	s.mux.HandleFunc("/_api/import-swagger", s.handleImportSwagger)
+	s.mux.HandleFunc("/_api/ws", s.handleAPIWS)
 
-	// Mock routes - catch all
+	// Mock routes
 	s.mux.HandleFunc("/mock/", s.handleMock)
+	
+	// WebSocket routes
+	s.mux.HandleFunc("/ws/", s.handleWS)
 }
 
 // --- Static files ---
@@ -249,9 +261,34 @@ func (s *Server) handleMock(w http.ResponseWriter, r *http.Request) {
 			body = fmt.Sprintf(`{"error":"no mock found","method":"%s","path":"%s","hint":"add a route via Web UI or /_api/routes"}`, method, path)
 		}
 	} else {
-		status = route.Status
 		routeID = route.ID
-		body = config.ParsePath(route.Path, path, route.Body)
+		
+		// Check for script execution
+		if route.Script != "" {
+			ctx := script.ScriptContext{
+				Method:  method,
+				Path:    path,
+				Headers: headersToMap(r.Header),
+				Body:    reqBody,
+				Params:  extractParams(route.Path, path),
+				Query:   queryToMap(r.URL.Query()),
+			}
+			scriptStatus, scriptBody, scriptHeaders, err := s.scriptEngine.Execute(route.Script, ctx)
+			if err == nil && scriptBody != "" {
+				status = scriptStatus
+				body = scriptBody
+				for k, v := range scriptHeaders {
+					w.Header().Set(k, v)
+				}
+			} else {
+				// Fallback to static response
+				status = route.Status
+				body = config.ParsePath(route.Path, path, route.Body)
+			}
+		} else {
+			status = route.Status
+			body = config.ParsePath(route.Path, path, route.Body)
+		}
 
 		if route.Delay > 0 {
 			time.Sleep(time.Duration(route.Delay) * time.Millisecond)
@@ -491,4 +528,110 @@ var templates = []config.Route{
 		Description: "Paginated list",
 		Body: `{"items": [{"id":1},{"id":2}],"total": 42,"page": 1,"per_page": 20}`,
 	},
+	{
+		Method: "GET", Path: "/random", Status: 200,
+		Description: "Dynamic response (JS script)",
+		Script: `// Dynamic response with JavaScript
+var random = Math.floor(Math.random() * 1000);
+respond({
+  status: 200,
+  body: JSON.stringify({ id: random, timestamp: Date.now() })
+});`,
+	},
+}
+
+// --- Swagger Import ---
+
+func (s *Server) handleImportSwagger(w http.ResponseWriter, r *http.Request) {
+	s.cors(w, r)
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", 405)
+		return
+	}
+
+	data, _ := io.ReadAll(r.Body)
+	routes, err := swagger.ParseOpenAPI(data)
+	if err != nil {
+		http.Error(w, "Failed to parse OpenAPI: "+err.Error(), 400)
+		return
+	}
+
+	for _, route := range routes {
+		route.ID = generateID()
+		s.cfg.AddRoute(route)
+	}
+	s.cfg.Save(s.configFile)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"imported": len(routes),
+		"routes":   routes,
+	})
+}
+
+// --- WebSocket API ---
+
+func (s *Server) handleAPIWS(w http.ResponseWriter, r *http.Request) {
+	s.cors(w, r)
+	w.Header().Set("Content-Type", "application/json")
+
+	switch r.Method {
+	case http.MethodGet:
+		handlers := s.wsMock.ListHandlers()
+		json.NewEncoder(w).Encode(handlers)
+
+	case http.MethodPost:
+		var h ws.WSHandler
+		if err := json.NewDecoder(r.Body).Decode(&h); err != nil {
+			http.Error(w, err.Error(), 400)
+			return
+		}
+		s.wsMock.AddHandler(h)
+		json.NewEncoder(w).Encode(h)
+
+	case http.MethodDelete:
+		path := r.URL.Query().Get("path")
+		_ = path // for now
+		w.WriteHeader(204)
+	}
+}
+
+// --- WebSocket Handler ---
+
+func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
+	s.wsMock.HandleWS(w, r, s.scriptEngine)
+}
+
+// --- Helpers for script context ---
+
+func headersToMap(h http.Header) map[string]string {
+	m := make(map[string]string)
+	for k, v := range h {
+		if len(v) > 0 {
+			m[k] = v[0]
+		}
+	}
+	return m
+}
+
+func extractParams(pattern, path string) map[string]string {
+	params := make(map[string]string)
+	pParts := strings.Split(strings.Trim(pattern, "/"), "/")
+	uParts := strings.Split(strings.Trim(path, "/"), "/")
+	for i, p := range pParts {
+		if i < len(uParts) && strings.HasPrefix(p, ":") {
+			params[strings.TrimPrefix(p, ":")] = uParts[i]
+		}
+	}
+	return params
+}
+
+func queryToMap(q url.Values) map[string]string {
+	m := make(map[string]string)
+	for k, v := range q {
+		if len(v) > 0 {
+			m[k] = v[0]
+		}
+	}
+	return m
 }

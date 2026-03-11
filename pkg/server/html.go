@@ -17,6 +17,7 @@ const indexHTML = `<!DOCTYPE html>
 
     <div class="tabs">
       <button class="tab active" data-tab="routes">Routes</button>
+      <button class="tab" data-tab="ws">WebSocket</button>
       <button class="tab" data-tab="logs">Request Log</button>
       <button class="tab" data-tab="settings">Settings</button>
     </div>
@@ -27,6 +28,7 @@ const indexHTML = `<!DOCTYPE html>
         <div class="toolbar-left">
           <button onclick="openModal()">+ Add Route</button>
           <button class="secondary" onclick="openTemplates()">📋 Templates</button>
+          <button class="secondary" onclick="openSwaggerModal()">📥 Swagger</button>
           <button class="secondary" onclick="exportRoutes()">⬇ Export</button>
           <label class="import-btn">
             ⬆ Import
@@ -38,6 +40,19 @@ const indexHTML = `<!DOCTYPE html>
       <div id="routes" class="routes"></div>
       <div id="empty" class="empty" style="display:none;">
         <p>No routes yet. Click <strong>+ Add Route</strong> or use a <strong>Template</strong>.</p>
+      </div>
+    </div>
+
+    <!-- WebSocket Tab -->
+    <div id="tab-ws" class="tab-content">
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <button onclick="openWSModal()">+ Add WS Handler</button>
+        </div>
+      </div>
+      <div id="ws-handlers" class="routes"></div>
+      <div id="ws-empty" class="empty" style="display:none;">
+        <p>No WebSocket handlers. Click <strong>+ Add WS Handler</strong> to create one.</p>
       </div>
     </div>
 
@@ -82,13 +97,13 @@ const indexHTML = `<!DOCTYPE html>
     </div>
 
     <div class="footer">
-      Mock base: <code id="mock-url"></code>
+      Mock base: <code id="mock-url"></code> | WS: <code id="ws-url"></code>
     </div>
   </div>
 
   <!-- Add/Edit Route Modal -->
   <div id="modal" class="modal" style="display:none;">
-    <div class="modal-content">
+    <div class="modal-content wide">
       <h2 id="modal-title">Add Mock Route</h2>
       <div class="form">
         <div class="row">
@@ -115,13 +130,37 @@ const indexHTML = `<!DOCTYPE html>
           <label>Description</label>
           <input id="f-desc" placeholder="Optional description" />
         </div>
+        
         <div class="row full">
-          <label>Response Body</label>
-          <textarea id="f-body" rows="6" placeholder='{"id": 1}&#10;Use {{param}} for path params'></textarea>
+          <label>Response Type</label>
+          <select id="f-type" onchange="toggleResponseType()">
+            <option value="static">Static JSON</option>
+            <option value="script">JavaScript (Dynamic)</option>
+          </select>
         </div>
-        <div class="row full">
-          <label>Custom Headers (optional)</label>
-          <textarea id="f-headers" rows="2" placeholder='{"X-Token": "abc"}'></textarea>
+        
+        <div id="static-response">
+          <div class="row full">
+            <label>Response Body</label>
+            <textarea id="f-body" rows="6" placeholder='{"id": 1}&#10;Use {{param}} for path params'></textarea>
+          </div>
+          <div class="row full">
+            <label>Custom Headers (optional)</label>
+            <textarea id="f-headers" rows="2" placeholder='{"X-Token": "abc"}'></textarea>
+          </div>
+        </div>
+        
+        <div id="script-response" style="display:none;">
+          <div class="row full">
+            <label>JavaScript Script</label>
+            <textarea id="f-script" rows="10" placeholder='// Available: method, path, headers, body, params, query
+// Use respond({status, body, headers}) to return
+var id = params.id || "unknown";
+respond({
+  status: 200,
+  body: JSON.stringify({id: id, time: Date.now()})
+});'></textarea>
+          </div>
         </div>
 
         <div class="row full conditions-header">
@@ -144,11 +183,78 @@ const indexHTML = `<!DOCTYPE html>
     </div>
   </div>
 
+  <!-- Swagger Import Modal -->
+  <div id="swagger-modal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <h2>📥 Import Swagger/OpenAPI</h2>
+      <p class="template-hint">Paste your OpenAPI 2.0 or 3.x spec (JSON or YAML) to auto-generate mock routes.</p>
+      <div class="form">
+        <div class="row full">
+          <label>OpenAPI Spec</label>
+          <textarea id="swagger-input" rows="15" placeholder='{
+  "openapi": "3.0.0",
+  "paths": {
+    "/users": {
+      "get": { ... }
+    }
+  }
+}'></textarea>
+        </div>
+        <div class="row full">
+          <label>Or upload file</label>
+          <input type="file" id="swagger-file" accept=".json,.yaml,.yml" onchange="loadSwaggerFile(event)" />
+        </div>
+      </div>
+      <div class="actions">
+        <button onclick="importSwagger()">Import</button>
+        <button class="secondary" onclick="closeSwaggerModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WebSocket Modal -->
+  <div id="ws-modal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <h2>Add WebSocket Handler</h2>
+      <div class="form">
+        <div class="row">
+          <label>Path</label>
+          <input id="ws-path" placeholder="/chat" />
+        </div>
+        <div class="row full">
+          <label>Description</label>
+          <input id="ws-desc" placeholder="Optional description" />
+        </div>
+        <div class="row">
+          <label>Delay (ms)</label>
+          <input id="ws-delay" type="number" value="0" />
+        </div>
+        <div class="row full">
+          <label>Auto Reply (JSON)</label>
+          <textarea id="ws-auto-reply" rows="3" placeholder='{"type": "echo", "data": "received"}'></textarea>
+        </div>
+        <div class="row full">
+          <label>On Connect Message</label>
+          <textarea id="ws-on-connect" rows="2" placeholder='{"type": "connected"}'></textarea>
+        </div>
+        <div class="row full">
+          <label>On Message Script (JS, optional)</label>
+          <textarea id="ws-on-message" rows="5" placeholder='// body = incoming message
+respond({body: JSON.stringify({echo: body})});'></textarea>
+        </div>
+      </div>
+      <div class="actions">
+        <button onclick="saveWSHandler()">Save</button>
+        <button class="secondary" onclick="closeWSModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Templates Modal -->
   <div id="templates-modal" class="modal" style="display:none;">
     <div class="modal-content wide">
       <h2>📋 Quick Templates</h2>
-      <p class="template-hint">Click to add. Includes REST CRUD, Auth, conditional responses, and more.</p>
+      <p class="template-hint">Click to add. Includes REST CRUD, Auth, conditional responses, scripts, and more.</p>
       <div id="template-list" class="template-list"></div>
       <div class="actions">
         <button class="secondary" onclick="closeTemplates()">Close</button>

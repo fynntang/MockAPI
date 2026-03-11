@@ -7,17 +7,19 @@ import (
 )
 
 type Route struct {
-	ID          string            `json:"id"`
-	Method      string            `json:"method"`
-	Path        string            `json:"path"`
-	Status      int               `json:"status"`
-	Body        string            `json:"body"`
-	Headers     map[string]string `json:"headers,omitempty"`
-	Delay       int               `json:"delay_ms,omitempty"`
-	Description string            `json:"description,omitempty"`
+	ID           string            `json:"id"`
+	Method       string            `json:"method"`
+	Path         string            `json:"path"`
+	Status       int               `json:"status"`
+	Body         string            `json:"body"`
+	Headers      map[string]string `json:"headers,omitempty"`
+	Delay        int               `json:"delay_ms,omitempty"`
+	Description  string            `json:"description,omitempty"`
 	// Conditional matching
-	MatchHeaders map[string]string `json:"match_headers,omitempty"` // must have these headers
-	MatchBody    string            `json:"match_body,omitempty"`    // must contain this in body
+	MatchHeaders map[string]string `json:"match_headers,omitempty"`
+	MatchBody    string            `json:"match_body,omitempty"`
+	// Script engine (dynamic response)
+	Script string `json:"script,omitempty"` // JavaScript code for dynamic response
 }
 
 type RequestLog struct {

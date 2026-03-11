@@ -193,6 +193,10 @@ button.del:hover { background: #f8514922; }
   display: inline-block; background: #a371f733; color: #a371f7;
   font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: 700;
 }
+.script-badge {
+  display: inline-block; background: #f0883e33; color: #f0883e;
+  font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: 700;
+}
 .proxy-badge {
   display: inline-block; background: #1f6feb33; color: #58a6ff;
   font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: 700;
