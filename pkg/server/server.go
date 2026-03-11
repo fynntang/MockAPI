@@ -756,34 +756,39 @@ func (s *Server) handleGRPC(w http.ResponseWriter, r *http.Request) {
 	s.cors(w, r)
 	
 	// Parse gRPC-Web request
-	// Format: /package.Service/Method
+	// Format: /package.Service/Method or /Service/Method
 	path := strings.TrimPrefix(r.URL.Path, "/grpc")
-	parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
+	path = strings.TrimPrefix(path, "/")
 	
-	if len(parts) < 2 {
-		w.Header().Set("Content-Type", "application/grpc-web+json")
-		w.WriteHeader(400)
-		return
-	}
-
-	// Extract service and method
-	serviceMethod := parts[len(parts)-1]
-	serviceParts := strings.Split(serviceMethod, ".")
+	// Split by / and take last two parts
+	parts := strings.Split(path, "/")
 	
 	var serviceName, methodName string
-	if len(serviceParts) == 2 {
-		serviceName = serviceParts[0]
-		methodName = serviceParts[1]
-	} else {
-		methodName = serviceMethod
+	if len(parts) >= 2 {
+		serviceName = parts[len(parts)-2]
+		methodName = parts[len(parts)-1]
+	} else if len(parts) == 1 {
+		// Try to parse Service.Method format
+		sm := strings.Split(parts[0], ".")
+		if len(sm) == 2 {
+			serviceName = sm[0]
+			methodName = sm[1]
+		} else {
+			methodName = parts[0]
+		}
 	}
+
+	// Clean method name (remove parentheses from proto import)
+	methodName = strings.Split(methodName, "(")[0]
+	serviceName = strings.Split(serviceName, "(")[0]
 
 	// Find mock handler
 	handler := s.cfg.FindGRPCHandler(serviceName, methodName)
 	if handler == nil {
 		// Try to find by method name only
 		for _, h := range s.cfg.GRPC {
-			if h.Method == methodName {
+			hMethod := strings.Split(h.Method, "(")[0]
+			if hMethod == methodName {
 				handler = &h
 				break
 			}
