@@ -1,0 +1,12 @@
+{
+  "port": 9099,
+  "routes": [
+    {
+      "id": "4a616f39a69e98a6",
+      "method": "GET",
+      "path": "/users/1",
+      "status": 200,
+      "body": "{\"id\":1,\"name\":\"Alice\"}"
+    }
+  ]
+}
