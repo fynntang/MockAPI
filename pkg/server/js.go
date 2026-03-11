@@ -6,36 +6,82 @@ const API = "/_api/routes";
 
 document.getElementById("mock-url").textContent = location.origin + MOCK_BASE;
 
+// --- Tabs ---
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+    tab.classList.add("active");
+    document.getElementById("tab-" + tab.dataset.tab).classList.add("active");
+    if (tab.dataset.tab === "logs") loadLogs();
+  });
+});
+
+// --- Routes ---
+let editingId = null;
+
 async function loadRoutes() {
   const res = await fetch(API);
   const routes = await res.json();
   const el = document.getElementById("routes");
   const empty = document.getElementById("empty");
+  const filter = (document.getElementById("route-search")?.value || "").toLowerCase();
 
-  if (routes.length === 0) {
+  const filtered = routes.filter(r =>
+    !filter || r.method.toLowerCase().includes(filter) ||
+    r.path.toLowerCase().includes(filter) ||
+    (r.description || "").toLowerCase().includes(filter)
+  );
+
+  if (filtered.length === 0) {
     el.innerHTML = "";
     empty.style.display = "";
     return;
   }
   empty.style.display = "none";
 
-  el.innerHTML = routes.map(r => {
-    const methodClass = r.method.toLowerCase();
-    return "<div class='route'>" +
-      "<div class='route-info'>" +
-        "<span class='method " + methodClass + "'>" + r.method + "</span>" +
-        "<code>" + escapeHtml(MOCK_BASE + r.path) + "</code>" +
-        "<span class='status'>→ " + r.status + (r.delay ? " (" + r.delay + "ms)" : "") + "</span>" +
-      "</div>" +
-      "<div class='route-actions'>" +
-        "<button class='copy' onclick='copyCurl(" + JSON.stringify(r) + ")'>Copy curl</button>" +
-        "<button class='del' onclick='deleteRoute(\"" + r.id + "\")'>✕</button>" +
-      "</div>" +
-    "</div>";
+  el.innerHTML = filtered.map(r => {
+    const mc = r.method.toLowerCase();
+    const desc = r.description ? '<span class="desc">' + escapeHtml(r.description) + '</span>' : '';
+    return '<div class="route">' +
+      '<div class="route-info">' +
+        '<span class="method ' + mc + '">' + r.method + '</span>' +
+        '<code>' + escapeHtml(r.path) + '</code>' +
+        desc +
+        '<span class="status">' + r.status + (r.delay ? ' · ' + r.delay + 'ms' : '') + '</span>' +
+      '</div>' +
+      '<div class="route-actions">' +
+        '<button class="copy" onclick="copyCurl(' + JSON.stringify(r) + ')" title="Copy curl">📋</button>' +
+        '<button class="copy" onclick="editRoute(' + JSON.stringify(r) + ')" title="Edit">✏️</button>' +
+        '<button class="del" onclick="deleteRoute(\'' + r.id + '\')" title="Delete">✕</button>' +
+      '</div>' +
+    '</div>';
   }).join("");
 }
 
 function openModal() {
+  editingId = null;
+  document.getElementById("modal-title").textContent = "Add Mock Route";
+  document.getElementById("f-method").value = "GET";
+  document.getElementById("f-path").value = "";
+  document.getElementById("f-status").value = "200";
+  document.getElementById("f-delay").value = "0";
+  document.getElementById("f-desc").value = "";
+  document.getElementById("f-body").value = "";
+  document.getElementById("f-headers").value = "";
+  document.getElementById("modal").style.display = "";
+}
+
+function editRoute(r) {
+  editingId = r.id;
+  document.getElementById("modal-title").textContent = "Edit Route";
+  document.getElementById("f-method").value = r.method;
+  document.getElementById("f-path").value = r.path;
+  document.getElementById("f-status").value = r.status;
+  document.getElementById("f-delay").value = r.delay || 0;
+  document.getElementById("f-desc").value = r.description || "";
+  document.getElementById("f-body").value = r.body || "";
+  document.getElementById("f-headers").value = r.headers ? JSON.stringify(r.headers, null, 2) : "";
   document.getElementById("modal").style.display = "";
 }
 
@@ -43,28 +89,37 @@ function closeModal() {
   document.getElementById("modal").style.display = "none";
 }
 
-async function addRoute() {
+async function saveRoute() {
   let headers = {};
   const h = document.getElementById("f-headers").value.trim();
   if (h) {
     try { headers = JSON.parse(h); } catch(e) { alert("Invalid headers JSON"); return; }
   }
 
-  const body = document.getElementById("f-body").value.trim() || "{}";
-
   const route = {
     method: document.getElementById("f-method").value,
     path: document.getElementById("f-path").value,
     status: parseInt(document.getElementById("f-status").value),
     delay: parseInt(document.getElementById("f-delay").value) || 0,
-    body: body,
-    headers: headers,
+    description: document.getElementById("f-desc").value.trim(),
+    body: document.getElementById("f-body").value,
+    headers: Object.keys(headers).length ? headers : undefined,
   };
 
   if (!route.path) { alert("Path is required"); return; }
 
-  await fetch(API, {
-    method: "POST",
+  let url, method;
+  if (editingId) {
+    route.id = editingId;
+    url = API;
+    method = "PUT";
+  } else {
+    url = API;
+    method = "POST";
+  }
+
+  await fetch(url, {
+    method: method,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(route),
   });
@@ -74,6 +129,7 @@ async function addRoute() {
 }
 
 async function deleteRoute(id) {
+  if (!confirm("Delete this route?")) return;
   await fetch(API + "?id=" + id, { method: "DELETE" });
   loadRoutes();
 }
@@ -81,14 +137,123 @@ async function deleteRoute(id) {
 function copyCurl(r) {
   const url = location.origin + MOCK_BASE + r.path;
   const cmd = "curl -X " + r.method + " " + url;
-  navigator.clipboard.writeText(cmd).then(() => {
-    alert("Copied: " + cmd);
-  });
+  navigator.clipboard.writeText(cmd);
 }
 
-function escapeHtml(s) {
-  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+// --- Import / Export ---
+function exportRoutes() {
+  location.href = "/_api/export";
 }
+
+async function importRoutes(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const text = await file.text();
+  try {
+    JSON.parse(text);
+  } catch(err) {
+    alert("Invalid JSON file"); return;
+  }
+  const res = await fetch("/_api/import", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: text,
+  });
+  const data = await res.json();
+  alert("Imported " + data.imported + " routes!");
+  loadRoutes();
+  e.target.value = "";
+}
+
+// --- Templates ---
+async function openTemplates() {
+  document.getElementById("templates-modal").style.display = "";
+  const res = await fetch("/_api/templates");
+  const templates = await res.json();
+  document.getElementById("template-list").innerHTML = templates.map(t => {
+    const mc = t.method.toLowerCase();
+    return '<div class="template-item" onclick="useTemplate(this)" ' +
+      'data-method="' + t.method + '" data-path="' + escapeAttr(t.path) + '" ' +
+      'data-status="' + t.status + '" data-delay="' + (t.delay||0) + '" ' +
+      'data-desc="' + escapeAttr(t.description||'') + '" ' +
+      'data-body="' + escapeAttr(t.body) + '" ' +
+      'data-headers="' + escapeAttr(t.headers ? JSON.stringify(t.headers) : '') + '">' +
+      '<div class="template-top">' +
+        '<span class="method ' + mc + '">' + t.method + '</span>' +
+        '<code>' + escapeHtml(t.path) + '</code>' +
+        '<span class="status">' + t.status + (t.delay ? ' · ' + t.delay + 'ms' : '') + '</span>' +
+      '</div>' +
+      (t.description ? '<div class="template-desc">' + escapeHtml(t.description) + '</div>' : '') +
+    '</div>';
+  }).join("");
+}
+
+function closeTemplates() {
+  document.getElementById("templates-modal").style.display = "none";
+}
+
+function useTemplate(el) {
+  const d = el.dataset;
+  document.getElementById("f-method").value = d.method;
+  document.getElementById("f-path").value = d.path;
+  document.getElementById("f-status").value = d.status;
+  document.getElementById("f-delay").value = d.delay;
+  document.getElementById("f-desc").value = d.desc;
+  document.getElementById("f-body").value = d.body;
+  document.getElementById("f-headers").value = d.headers || "";
+  closeTemplates();
+  document.getElementById("modal").style.display = "";
+  document.getElementById("modal-title").textContent = "Add Mock Route";
+  editingId = null;
+}
+
+// --- Logs ---
+async function loadLogs() {
+  const res = await fetch("/_api/logs");
+  const logs = await res.json();
+  const el = document.getElementById("logs");
+  const empty = document.getElementById("logs-empty");
+  document.getElementById("log-count").textContent = logs.length + " requests";
+
+  if (logs.length === 0) {
+    el.innerHTML = "";
+    empty.style.display = "";
+    return;
+  }
+  empty.style.display = "none";
+
+  el.innerHTML = logs.slice().reverse().map(l => {
+    const sc = l.status >= 200 && l.status < 300 ? 'ok' : l.status >= 400 ? 'err' : '';
+    return '<div class="log-item">' +
+      '<span class="log-time">' + l.timestamp + '</span>' +
+      '<span class="method ' + l.method.toLowerCase() + '">' + l.method + '</span>' +
+      '<code>' + escapeHtml(l.path) + '</code>' +
+      '<span class="log-status ' + sc + '">' + l.status + '</span>' +
+      '<span class="log-delay">' + l.delay + 'ms</span>' +
+    '</div>';
+  }).join("");
+}
+
+async function clearLogs() {
+  if (!confirm("Clear all logs?")) return;
+  await fetch("/_api/clear-logs", { method: "POST" });
+  loadLogs();
+}
+
+// --- Utils ---
+function escapeHtml(s) {
+  return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function escapeAttr(s) {
+  return (s||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+// Auto-refresh logs
+setInterval(() => {
+  if (document.getElementById("tab-logs").classList.contains("active")) {
+    loadLogs();
+  }
+}, 3000);
 
 loadRoutes();
 `
