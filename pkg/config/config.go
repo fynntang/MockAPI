@@ -43,6 +43,16 @@ type GraphQLHandler struct {
 	Description   string      `json:"description,omitempty"`
 }
 
+// GRPCHandler represents a mock for gRPC methods
+type GRPCHandler struct {
+	ID           string      `json:"id"`
+	Service      string      `json:"service"`
+	Method       string      `json:"method"`
+	MockResponse interface{} `json:"mock_response"`
+	Delay        int         `json:"delay_ms,omitempty"`
+	Description  string      `json:"description,omitempty"`
+}
+
 type Config struct {
 	Port        int              `json:"port"`
 	Routes      []Route          `json:"routes"`
@@ -51,6 +61,7 @@ type Config struct {
 	MaxLogs     int              `json:"max_logs"`
 	ProxyURL    string           `json:"proxy_url,omitempty"`
 	GraphQL     []GraphQLHandler `json:"graphql,omitempty"`
+	GRPC        []GRPCHandler    `json:"grpc,omitempty"`
 	mu          sync.Mutex
 }
 
@@ -171,6 +182,34 @@ func (c *Config) FindGraphQLHandler(operationName string) *GraphQLHandler {
 	for i := range c.GraphQL {
 		if c.GraphQL[i].OperationName == operationName || c.GraphQL[i].OperationName == "" {
 			return &c.GraphQL[i]
+		}
+	}
+	return nil
+}
+
+func (c *Config) AddGRPCHandler(h GRPCHandler) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.GRPC = append(c.GRPC, h)
+}
+
+func (c *Config) DeleteGRPCHandler(id string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for i, h := range c.GRPC {
+		if h.ID == id {
+			c.GRPC = append(c.GRPC[:i], c.GRPC[i+1:]...)
+			return
+		}
+	}
+}
+
+func (c *Config) FindGRPCHandler(service, method string) *GRPCHandler {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for i := range c.GRPC {
+		if c.GRPC[i].Service == service && c.GRPC[i].Method == method {
+			return &c.GRPC[i]
 		}
 	}
 	return nil

@@ -10,6 +10,7 @@ const WS_API = "/_api/ws";
 document.getElementById("mock-url").textContent = location.origin + MOCK_BASE;
 document.getElementById("ws-url").textContent = location.origin + WS_BASE;
 document.getElementById("graphql-url").textContent = location.origin + "/graphql";
+document.getElementById("grpc-url").textContent = location.origin + "/grpc";
 
 // --- Tabs ---
 document.querySelectorAll(".tab").forEach(tab => {
@@ -475,6 +476,109 @@ function copyGQLQuery(opName) {
   const query = opName ? "{ " + opName + " }" : "{ __typename }";
   navigator.clipboard.writeText(query);
   alert("Copied: " + query);
+}
+
+// --- gRPC ---
+async function loadGRPCHandlers() {
+  const res = await fetch("/_api/grpc");
+  const handlers = await res.json();
+  const el = document.getElementById("grpc-handlers");
+  const empty = document.getElementById("grpc-empty");
+
+  if (handlers.length === 0) { el.innerHTML = ""; empty.style.display = ""; return; }
+  empty.style.display = "none";
+
+  el.innerHTML = handlers.map(h => {
+    const desc = h.description ? '<span class="desc">' + escapeHtml(h.description) + '</span>' : '';
+    return '<div class="route">' +
+      '<div class="route-info">' +
+        '<span class="method grpc">gRPC</span>' +
+        '<code>' + escapeHtml(h.service + "." + h.method) + '</code>' +
+        desc +
+        (h.delay ? '<span class="status">' + h.delay + 'ms</span>' : '') +
+      '</div>' +
+      '<div class="route-actions">' +
+        '<button class="copy" onclick="copyGRPCCurl(\'' + escapeHtml(h.service) + '\', \'' + escapeHtml(h.method) + '\')" title="Copy curl">📋</button>' +
+        '<button class="del" onclick="deleteGRPCHandler(\'' + h.id + '\')" title="Delete">✕</button>' +
+      '</div>' +
+    '</div>';
+  }).join("");
+}
+
+function openGRPCModal() {
+  document.getElementById("grpc-service").value = "";
+  document.getElementById("grpc-method").value = "";
+  document.getElementById("grpc-desc").value = "";
+  document.getElementById("grpc-delay").value = "0";
+  document.getElementById("grpc-response").value = "";
+  document.getElementById("grpc-modal").style.display = "";
+}
+
+function closeGRPCModal() { document.getElementById("grpc-modal").style.display = "none"; }
+
+async function saveGRPCHandler() {
+  let response = {};
+  const respText = document.getElementById("grpc-response").value.trim();
+  if (respText) {
+    try { response = JSON.parse(respText); } catch(e) { alert("Invalid JSON response"); return; }
+  }
+
+  const h = {
+    service: document.getElementById("grpc-service").value.trim(),
+    method: document.getElementById("grpc-method").value.trim(),
+    description: document.getElementById("grpc-desc").value.trim(),
+    delay: parseInt(document.getElementById("grpc-delay").value) || 0,
+    mock_response: response,
+  };
+
+  if (!h.service || !h.method) { alert("Service and Method are required"); return; }
+
+  await fetch("/_api/grpc", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(h),
+  });
+
+  closeGRPCModal();
+  loadGRPCHandlers();
+}
+
+async function deleteGRPCHandler(id) {
+  if (!confirm("Delete this gRPC mock?")) return;
+  await fetch("/_api/grpc?id=" + id, { method: "DELETE" });
+  loadGRPCHandlers();
+}
+
+function copyGRPCCurl(service, method) {
+  const cmd = "grpcurl -plaintext -d '{}' localhost:9099 " + service + "/" + method;
+  navigator.clipboard.writeText(cmd);
+  alert("Copied: " + cmd);
+}
+
+// --- Import Proto ---
+function openProtoModal() {
+  document.getElementById("proto-input").value = "";
+  document.getElementById("proto-modal").style.display = "";
+}
+
+function closeProtoModal() { document.getElementById("proto-modal").style.display = "none"; }
+
+async function importProto() {
+  const input = document.getElementById("proto-input").value.trim();
+  if (!input) { alert("Please paste proto content"); return; }
+  
+  const res = await fetch("/_api/import-proto", {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },
+    body: input,
+  });
+  
+  if (!res.ok) { const err = await res.text(); alert("Import failed: " + err); return; }
+  
+  const data = await res.json();
+  alert("Imported " + data.imported + " gRPC methods!");
+  closeProtoModal();
+  loadGRPCHandlers();
 }
 
 loadRoutes();

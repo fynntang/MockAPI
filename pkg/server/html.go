@@ -18,6 +18,7 @@ const indexHTML = `<!DOCTYPE html>
     <div class="tabs">
       <button class="tab active" data-tab="routes">Routes</button>
       <button class="tab" data-tab="graphql">GraphQL</button>
+      <button class="tab" data-tab="grpc">gRPC</button>
       <button class="tab" data-tab="ws">WebSocket</button>
       <button class="tab" data-tab="logs">Request Log</button>
       <button class="tab" data-tab="settings">Settings</button>
@@ -68,6 +69,21 @@ const indexHTML = `<!DOCTYPE html>
       <div id="graphql-handlers" class="routes"></div>
       <div id="graphql-empty" class="empty" style="display:none;">
         <p>No GraphQL mocks. Click <strong>+ Add GraphQL Mock</strong> to create one.</p>
+      </div>
+    </div>
+
+    <!-- gRPC Tab -->
+    <div id="tab-grpc" class="tab-content">
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <button onclick="openGRPCModal()">+ Add gRPC Mock</button>
+          <button class="secondary" onclick="openProtoModal()">📥 Import Proto</button>
+        </div>
+        <span class="hint">Endpoint: <code id="grpc-url"></code></span>
+      </div>
+      <div id="grpc-handlers" class="routes"></div>
+      <div id="grpc-empty" class="empty" style="display:none;">
+        <p>No gRPC mocks. Click <strong>+ Add gRPC Mock</strong> or <strong>Import Proto</strong>.</p>
       </div>
     </div>
 
@@ -290,6 +306,62 @@ respond({body: JSON.stringify({echo: body})});'></textarea>
       <div class="actions">
         <button onclick="saveGraphQLHandler()">Save</button>
         <button class="secondary" onclick="closeGraphQLModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- gRPC Modal -->
+  <div id="grpc-modal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <h2>Add gRPC Mock</h2>
+      <div class="form">
+        <div class="row">
+          <label>Service</label>
+          <input id="grpc-service" placeholder="UserService" />
+        </div>
+        <div class="row">
+          <label>Method</label>
+          <input id="grpc-method" placeholder="GetUser" />
+        </div>
+        <div class="row full">
+          <label>Description</label>
+          <input id="grpc-desc" placeholder="Optional description" />
+        </div>
+        <div class="row">
+          <label>Delay (ms)</label>
+          <input id="grpc-delay" type="number" value="0" />
+        </div>
+        <div class="row full">
+          <label>Mock Response (JSON)</label>
+          <textarea id="grpc-response" rows="8" placeholder='{"id": 1, "name": "John"}'></textarea>
+        </div>
+      </div>
+      <div class="actions">
+        <button onclick="saveGRPCHandler()">Save</button>
+        <button class="secondary" onclick="closeGRPCModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Proto Modal -->
+  <div id="proto-modal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <h2>📥 Import Proto File</h2>
+      <p class="template-hint">Paste your .proto file to auto-generate gRPC mock handlers.</p>
+      <div class="form">
+        <div class="row full">
+          <label>Proto Content</label>
+          <textarea id="proto-input" rows="15" placeholder='syntax = "proto3";
+
+service UserService {
+  rpc GetUser(GetUserRequest) returns (User);
+  rpc CreateUser(CreateUserRequest) returns (User);
+}'></textarea>
+        </div>
+      </div>
+      <div class="actions">
+        <button onclick="importProto()">Import</button>
+        <button class="secondary" onclick="closeProtoModal()">Cancel</button>
       </div>
     </div>
   </div>

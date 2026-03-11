@@ -14,6 +14,7 @@ import (
 
 	"mockapi/pkg/config"
 	"mockapi/pkg/graphql"
+	"mockapi/pkg/grpcmock"
 	"mockapi/pkg/script"
 	"mockapi/pkg/swagger"
 	"mockapi/pkg/ws"
@@ -67,6 +68,8 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/_api/import-swagger", s.handleImportSwagger)
 	s.mux.HandleFunc("/_api/ws", s.handleAPIWS)
 	s.mux.HandleFunc("/_api/graphql", s.handleAPIGraphQL)
+	s.mux.HandleFunc("/_api/grpc", s.handleAPIGRPC)
+	s.mux.HandleFunc("/_api/import-proto", s.handleImportProto)
 
 	// Mock routes
 	s.mux.HandleFunc("/mock/", s.handleMock)
@@ -76,6 +79,9 @@ func (s *Server) registerRoutes() {
 	
 	// GraphQL endpoint
 	s.mux.HandleFunc("/graphql", s.handleGraphQL)
+	
+	// gRPC endpoints (gRPC-Web compatible)
+	s.mux.HandleFunc("/grpc/", s.handleGRPC)
 }
 
 // --- Static files ---
@@ -677,6 +683,129 @@ func (s *Server) handleGraphQL(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(graphql.Response{
 		Data: handler.Response,
+	})
+}
+
+// --- gRPC API ---
+
+func (s *Server) handleAPIGRPC(w http.ResponseWriter, r *http.Request) {
+	s.cors(w, r)
+	w.Header().Set("Content-Type", "application/json")
+
+	switch r.Method {
+	case http.MethodGet:
+		json.NewEncoder(w).Encode(s.cfg.GRPC)
+
+	case http.MethodPost:
+		var h config.GRPCHandler
+		if err := json.NewDecoder(r.Body).Decode(&h); err != nil {
+			http.Error(w, err.Error(), 400)
+			return
+		}
+		h.ID = generateID()
+		s.cfg.AddGRPCHandler(h)
+		s.cfg.Save(s.configFile)
+		json.NewEncoder(w).Encode(h)
+
+	case http.MethodDelete:
+		id := r.URL.Query().Get("id")
+		s.cfg.DeleteGRPCHandler(id)
+		s.cfg.Save(s.configFile)
+		w.WriteHeader(204)
+	}
+}
+
+func (s *Server) handleImportProto(w http.ResponseWriter, r *http.Request) {
+	s.cors(w, r)
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", 405)
+		return
+	}
+
+	data, _ := io.ReadAll(r.Body)
+	services, err := grpcmock.ParseProto(string(data))
+	if err != nil {
+		http.Error(w, "Failed to parse proto: "+err.Error(), 400)
+		return
+	}
+
+	// Auto-generate mock handlers
+	count := 0
+	for _, svc := range services {
+		for _, method := range svc.Methods {
+			h := config.GRPCHandler{
+				ID:           generateID(),
+				Service:      svc.Name,
+				Method:       method.Name,
+				MockResponse: grpcmock.GenerateMockResponse(method.OutputType),
+				Description:  fmt.Sprintf("%s.%s", svc.Name, method.Name),
+			}
+			s.cfg.AddGRPCHandler(h)
+			count++
+		}
+	}
+	s.cfg.Save(s.configFile)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]int{"imported": count})
+}
+
+// --- gRPC Handler (gRPC-Web compatible) ---
+
+func (s *Server) handleGRPC(w http.ResponseWriter, r *http.Request) {
+	s.cors(w, r)
+	
+	// Parse gRPC-Web request
+	// Format: /package.Service/Method
+	path := strings.TrimPrefix(r.URL.Path, "/grpc")
+	parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
+	
+	if len(parts) < 2 {
+		w.Header().Set("Content-Type", "application/grpc-web+json")
+		w.WriteHeader(400)
+		return
+	}
+
+	// Extract service and method
+	serviceMethod := parts[len(parts)-1]
+	serviceParts := strings.Split(serviceMethod, ".")
+	
+	var serviceName, methodName string
+	if len(serviceParts) == 2 {
+		serviceName = serviceParts[0]
+		methodName = serviceParts[1]
+	} else {
+		methodName = serviceMethod
+	}
+
+	// Find mock handler
+	handler := s.cfg.FindGRPCHandler(serviceName, methodName)
+	if handler == nil {
+		// Try to find by method name only
+		for _, h := range s.cfg.GRPC {
+			if h.Method == methodName {
+				handler = &h
+				break
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/grpc-web+json")
+	
+	if handler == nil {
+		w.WriteHeader(404)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "No mock found for: " + serviceName + "." + methodName,
+		})
+		return
+	}
+
+	if handler.Delay > 0 {
+		time.Sleep(time.Duration(handler.Delay) * time.Millisecond)
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"data": handler.MockResponse,
 	})
 }
 
