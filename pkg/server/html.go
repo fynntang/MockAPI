@@ -11,8 +11,11 @@ const indexHTML = `<!DOCTYPE html>
 <body>
   <div class="app">
     <header>
-      <h1>🦞 MockAPI</h1>
-      <p>Lightweight local API mock server</p>
+      <div class="title">
+        <h1>🦞 MockAPI</h1>
+        <p>Lightweight local API mock server</p>
+      </div>
+      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌙</button>
     </header>
 
     <div class="tabs">

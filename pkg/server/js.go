@@ -581,5 +581,32 @@ async function importProto() {
   loadGRPCHandlers();
 }
 
+// --- Theme Toggle ---
+function toggleTheme() {
+  const html = document.documentElement;
+  const btn = document.querySelector('.theme-toggle');
+  const isLight = html.classList.contains('light');
+  
+  if (isLight) {
+    html.classList.remove('light');
+    btn.textContent = '🌙';
+    localStorage.setItem('mockapi-theme', 'dark');
+  } else {
+    html.classList.add('light');
+    btn.textContent = '☀️';
+    localStorage.setItem('mockapi-theme', 'light');
+  }
+}
+
+// Initialize theme from localStorage
+(function() {
+  const saved = localStorage.getItem('mockapi-theme');
+  const btn = document.querySelector('.theme-toggle');
+  if (saved === 'light') {
+    document.documentElement.classList.add('light');
+    if (btn) btn.textContent = '☀️';
+  }
+})();
+
 loadRoutes();
 `
