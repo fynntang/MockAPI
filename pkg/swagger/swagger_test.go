@@ -3,6 +3,8 @@ package swagger
 import (
 	"strings"
 	"testing"
+
+	"mockapi/pkg/config"
 )
 
 func TestParseOpenAPIv3(t *testing.T) {
@@ -55,17 +57,21 @@ func TestParseOpenAPIv3(t *testing.T) {
 		t.Errorf("Expected 3 routes, got %d", len(routes))
 	}
 
-	// Check first route
-	if routes[0].Method != "GET" {
-		t.Errorf("Expected GET method, got %s", routes[0].Method)
+	// Find the GET /users route (order not guaranteed due to map iteration)
+	var getUsersRoute *config.Route
+	for i := range routes {
+		if routes[i].Method == "GET" && routes[i].Path == "/users" {
+			getUsersRoute = &routes[i]
+			break
+		}
 	}
 
-	if routes[0].Path != "/users" {
-		t.Errorf("Expected path /users, got %s", routes[0].Path)
+	if getUsersRoute == nil {
+		t.Fatalf("GET /users route not found")
 	}
 
-	if routes[0].Description != "Get all users" {
-		t.Errorf("Expected description 'Get all users', got %s", routes[0].Description)
+	if getUsersRoute.Description != "Get all users" {
+		t.Errorf("Expected description 'Get all users', got %s", getUsersRoute.Description)
 	}
 }
 
