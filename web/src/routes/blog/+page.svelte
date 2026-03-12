@@ -6,17 +6,28 @@
 	import { Card } from '$lib/components/ui/card';
 	import { theme } from '$lib/stores/theme';
 
+	const isZh = $derived(getLocale() === 'zh-hans');
+
 	// 博客文章列表
-	const posts = [
+	const posts = $derived(isZh ? [
 		{
 			slug: 'performance-optimization-24x',
 			title: '我用 Go 写了一个 Mock 服务器，性能提升了 24 倍',
 			description: '零依赖、单二进制、功能完整、高性能的 API Mock 服务器',
 			date: '2026-03-12',
 			tags: ['Go', 'MockAPI', 'Performance', 'Open Source'],
+			readTime: '8 分钟'
+		}
+	] : [
+		{
+			slug: 'performance-optimization-24x',
+			title: 'I Built a Mock Server in Go with 24x Performance Boost',
+			description: 'Zero dependencies, single binary, full-featured, high-performance API mock server',
+			date: '2026-03-12',
+			tags: ['Go', 'MockAPI', 'Performance', 'Open Source'],
 			readTime: '8 min'
 		}
-	];
+	]);
 
 	function switchLocale(newLocale: string) {
 		setLocale(newLocale as 'en' | 'zh-hans', { reload: true });
@@ -69,7 +80,7 @@
 <section class="pt-32 pb-16 px-6">
 	<div class="max-w-4xl mx-auto text-center">
 		<h1 class="text-5xl md:text-6xl font-black mb-6">Blog</h1>
-		<p class="text-xl text-zinc-600 dark:text-zinc-400">开发日志、技术分享、产品更新</p>
+		<p class="text-xl text-zinc-600 dark:text-zinc-400">{isZh ? '开发日志、技术分享、产品更新' : 'Development logs, technical insights, product updates'}</p>
 	</div>
 </section>
 
@@ -87,7 +98,7 @@
 								<div class="flex flex-wrap items-center gap-3 text-sm">
 									<span class="text-zinc-500">{post.date}</span>
 									<span class="text-zinc-300 dark:text-zinc-700">•</span>
-									<span class="text-zinc-500">{post.readTime} read</span>
+									<span class="text-zinc-500">{post.readTime} {isZh ? '阅读' : 'read'}</span>
 									{#each post.tags as tag}
 										<span class="px-2 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">{tag}</span>
 									{/each}
