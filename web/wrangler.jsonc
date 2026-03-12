@@ -3,7 +3,8 @@
   "name": "mockapi",
   "compatibility_date": "2026-03-12",
   "compatibility_flags": [
-    "nodejs_als"
+    "nodejs_als",
+    "nodejs_compat"
   ],
   "observability": {
     "enabled": true
