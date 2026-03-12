@@ -134,112 +134,42 @@ mockapi serve
 			<p>Go 的 <code>net/http</code> 性能优异，<code>encoding/json</code> 够用，<code>embed</code> 可以把 Web UI 嵌入二进制。不需要引入重型框架。</p>
 			
 			<h3>3. 跨平台编译</h3>
-			<p>一次编译，到处运行：</p>
-			
-			<pre><code class="language-bash">GOOS=darwin GOARCH=amd64 go build  # macOS
-GOOS=linux GOARCH=amd64 go build   # Linux
-GOOS=windows GOARCH=amd64 go build # Windows</code></pre>
+			<p>一次编译，到处运行。</p>
 			
 			<h3>4. 部署简单</h3>
-			<p>没有复杂的依赖关系，不需要 Docker 也能轻松部署。当然，如果你喜欢容器化：</p>
-			
-			<pre><code class="language-bash">docker run -p 8088:8088 mockapi</code></pre>
+			<p>没有复杂的依赖关系，不需要 Docker 也能轻松部署。</p>
 			
 			<h2>性能优化：从 O(n) 到 O(1)</h2>
 			
-			<p>项目初期，路由匹配是这样的：</p>
-			
-			<pre><code class="language-go">// 线性搜索 O(n)
-func (s *Server) matchRoute(method, path string) *Route {
-    for _, route := range s.routes {
-        if route.Method == method && route.Match(path) {
-            return route
-        }
-    }
-    return nil
-}</code></pre>
-			
-			<p>当路由数量少时没问题，但随着功能增加，性能急剧下降：</p>
-			
-			<pre><code>100 个路由：  ~500ns
-1000 个路由： ~5ms
-10000 个路由：~50ms  // 不可接受！</code></pre>
+			<p>项目初期，路由匹配是线性搜索。当路由数量增加时，性能急剧下降。</p>
 			
 			<h3>解决方案：RouteIndex</h3>
 			
 			<p>我设计了一个两层索引结构：</p>
-			
-			<pre><code>┌─────────────────────────────────────────┐
-│              RouteIndex                  │
-├─────────────────────────────────────────┤
-│ exact: map["GET:/users"] -> Route       │  ← O(1)
-├─────────────────────────────────────────┤
-│ param: map["GET:/users"] -> []Route     │  ← O(k)
-│        map["GET:/posts"] -> []Route     │
-├─────────────────────────────────────────┤
-│ wildcard: map["GET"] -> []Route         │  ← O(m)
-└─────────────────────────────────────────┘</code></pre>
-			
-			<p>匹配逻辑：</p>
-			<ol>
+			<ul>
 				<li><strong>精确匹配</strong>：直接查 map，O(1)</li>
 				<li><strong>参数路由</strong>：按前缀分组，大幅减少候选集</li>
 				<li><strong>通配符路由</strong>：按方法分组</li>
-			</ol>
+			</ul>
 			
 			<h3>优化效果</h3>
 			
-			<pre><code>优化前：BenchmarkRouteMatch-8    231218    5169 ns/op    6400 B/op
-优化后：BenchmarkRouteMatch-8    5589621   214 ns/op     68 B/op
-
-性能提升：24 倍
-内存减少：94%</code></pre>
-			
-			<p>这就是算法优化的力量。没有黑魔法，只是把数据结构选对了。</p>
+			<p>性能提升 <strong>24 倍</strong>，内存减少 <strong>94%</strong>。这就是算法优化的力量。没有黑魔法，只是把数据结构选对了。</p>
 			
 			<h2>核心功能实现</h2>
 			
 			<h3>1. 动态路由</h3>
-			<p>支持 <code>:param</code> 参数和 <code>*</code> 通配符：</p>
-			
-			<pre><code class="language-yaml"># routes.json
-- path: /users/:id
-  method: GET
-  response:
-    body: |
-      {
-        "id": {{params.id}},
-        "name": "User {{params.id}}"
-      }
-
-- path: /api/*
-  method: ANY
-  proxy: https://real-api.com</code></pre>
+			<p>支持 <code>:param</code> 参数和 <code>*</code> 通配符。</p>
 			
 			<h3>2. JavaScript 脚本引擎</h3>
-			<p>当静态响应不够用时，可以用 JavaScript 动态生成：</p>
-			
-			<pre><code class="language-javascript">// 条件响应
-if (headers["x-api-key"] === "secret") {
-  return { authorized: true, user: "admin" };
-}
-
-// 模拟延迟
-sleep(100);
-return { data: "delayed response" };</code></pre>
+			<p>当静态响应不够用时，可以用 JavaScript 动态生成响应。</p>
 			
 			<h3>3. Swagger/OpenAPI 导入</h3>
-			<p>有现成的 API 文档？一键导入：</p>
-			
-			<pre><code class="language-bash">mockapi import swagger.yaml</code></pre>
-			
-			<p>自动解析所有端点，生成 Mock 路由。</p>
+			<p>有现成的 API 文档？一键导入，自动解析所有端点，生成 Mock 路由。</p>
 			
 			<h2>内置 Web UI</h2>
 			
-			<p>不想写配置文件？打开浏览器就能管理：</p>
-			
-			<pre><code>http://localhost:8088/_ui</code></pre>
+			<p>打开浏览器就能管理：<code>http://localhost:8088/_ui</code></p>
 			
 			<p>功能：</p>
 			<ul>
