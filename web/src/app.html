@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="%paraglide.lang%" dir="%paraglide.dir%" class="dark">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" href="%sveltekit.assets%/favicon.svg" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="description" content="Lightweight local API mock server. Zero dependencies, one binary, 24x faster." />
+		<meta name="keywords" content="API Mock, Mock Server, Developer Tools, Go, GraphQL, WebSocket, gRPC" />
+		<meta name="theme-color" content="#3f3f46" />
+		<script>
+			// Theme initialization - runs before page renders
+			(function() {
+				const stored = localStorage.getItem('theme');
+				const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+				const theme = stored || (prefersDark ? 'dark' : 'light');
+				document.documentElement.classList.toggle('dark', theme === 'dark');
+			})();
+		</script>
+		%sveltekit.head%
+	</head>
+	<body data-sveltekit-preload-data="hover" class="bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white">
+		<div style="display: contents">%sveltekit.body%</div>
+	</body>
+</html>
