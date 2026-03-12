@@ -92,6 +92,8 @@
 </footer>
 
 <style>
+	@reference;
+	
 	/* Prose customization for blog articles */
 	:global(.prose h1) {
 		@apply text-zinc-900 dark:text-white;
