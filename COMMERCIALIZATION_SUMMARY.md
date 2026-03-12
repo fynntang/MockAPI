@@ -74,10 +74,10 @@
 - 项目地址
 
 **发布渠道**:
-- [ ] 个人博客
-- [ ] 掘金
-- [ ] 知乎
-- [ ] V2EX
+- [x] 个人博客
+- [x] 掘金
+- [x] 知乎
+- [x] V2EX
 - [ ] Reddit (r/golang, r/programming)
 - [ ] Hacker News
 
