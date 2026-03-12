@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MockAPI — The Fastest Way to Mock APIs</title>
   <meta name="description" content="Lightweight local API mock server. Zero dependencies, one binary, 24x faster.">
-  <meta name="keywords" content="API Mock, Mock Server, Developer Tools, Go, GraphQL, WebSocket">
+  <meta name="keywords" content="API Mock, Mock Server, Developer Tools, Go, GraphQL, WebSocket, gRPC">
   <meta name="theme-color" content="#8B5CF6">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,7 +14,7 @@
     * { font-family: 'Inter', sans-serif; }
     html { scroll-behavior: smooth; }
     body {
-      background: #000;
+      background: #0a0a0f;
       color: #fff;
       overflow-x: hidden;
     }
@@ -24,9 +24,9 @@
       position: absolute;
       inset: 0;
       background: 
-        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(120, 119, 198, 0.3), transparent),
-        radial-gradient(ellipse 60% 40% at 80% 50%, rgba(139, 92, 246, 0.15), transparent),
-        radial-gradient(ellipse 50% 30% at 20% 80%, rgba(99, 102, 241, 0.15), transparent);
+        radial-gradient(ellipse 100% 60% at 50% -10%, rgba(139, 92, 246, 0.25), transparent 50%),
+        radial-gradient(ellipse 80% 50% at 80% 40%, rgba(99, 102, 241, 0.15), transparent 50%),
+        radial-gradient(ellipse 60% 40% at 20% 60%, rgba(139, 92, 246, 0.1), transparent 50%);
     }
     
     /* Grid Background */
@@ -34,15 +34,15 @@
       position: absolute;
       inset: 0;
       background-image: 
-        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+        linear-gradient(rgba(139, 92, 246, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(139, 92, 246, 0.03) 1px, transparent 1px);
       background-size: 64px 64px;
-      mask-image: radial-gradient(ellipse 60% 50% at 50% 0%, black 40%, transparent 100%);
+      mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
     }
     
     /* Gradient Text */
     .gradient-text {
-      background: linear-gradient(135deg, #fff 0%, #a78bfa 50%, #8B5CF6 100%);
+      background: linear-gradient(135deg, #fff 0%, #c4b5fd 50%, #8B5CF6 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -50,7 +50,7 @@
     
     /* Glow Effects */
     .glow-purple {
-      box-shadow: 0 0 60px rgba(139, 92, 246, 0.5);
+      box-shadow: 0 0 60px rgba(139, 92, 246, 0.4);
     }
     
     .glow-text {
@@ -98,7 +98,30 @@
     .card:hover {
       background: rgba(255, 255, 255, 0.04);
       border-color: rgba(139, 92, 246, 0.3);
-      transform: translateY(-4px);
+    }
+    
+    /* Screenshot Card */
+    .screenshot-card {
+      background: linear-gradient(180deg, rgba(30, 30, 40, 0.6) 0%, rgba(20, 20, 30, 0.8) 100%);
+      border: 1px solid rgba(139, 92, 246, 0.15);
+      transition: all 0.4s ease;
+    }
+    .screenshot-card:hover {
+      border-color: rgba(139, 92, 246, 0.4);
+      transform: translateY(-8px);
+      box-shadow: 0 30px 60px -20px rgba(139, 92, 246, 0.3);
+    }
+    .screenshot-card img {
+      transition: transform 0.4s ease;
+    }
+    .screenshot-card:hover img {
+      transform: scale(1.02);
+    }
+    
+    /* Feature Badge */
+    .feature-badge {
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(99, 102, 241, 0.2) 100%);
+      border: 1px solid rgba(139, 92, 246, 0.3);
     }
     
     /* Code Block */
@@ -119,7 +142,7 @@
     
     /* Stats */
     .stat-number {
-      font-size: 4rem;
+      font-size: 3.5rem;
       font-weight: 800;
       background: linear-gradient(135deg, #8B5CF6, #6366F1);
       -webkit-background-clip: text;
@@ -130,7 +153,7 @@
     /* Animations */
     @keyframes float {
       0%, 100% { transform: translateY(0px); }
-      50% { transform: translateY(-20px); }
+      50% { transform: translateY(-15px); }
     }
     .animate-float { animation: float 6s ease-in-out infinite; }
     
@@ -139,12 +162,6 @@
       50% { box-shadow: 0 0 40px rgba(139, 92, 246, 0.5); }
     }
     .animate-pulse-glow { animation: pulse-glow 3s ease-in-out infinite; }
-    
-    @keyframes gradient-shift {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
-    }
     
     /* Scroll indicator */
     .scroll-indicator {
@@ -155,11 +172,27 @@
       40% { transform: translateY(-10px) translateX(-50%); }
       60% { transform: translateY(-5px) translateX(-50%); }
     }
+    
+    /* Gallery Scroll */
+    .gallery-scroll::-webkit-scrollbar {
+      height: 6px;
+    }
+    .gallery-scroll::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 3px;
+    }
+    .gallery-scroll::-webkit-scrollbar-thumb {
+      background: rgba(139, 92, 246, 0.3);
+      border-radius: 3px;
+    }
+    .gallery-scroll::-webkit-scrollbar-thumb:hover {
+      background: rgba(139, 92, 246, 0.5);
+    }
   </style>
 </head>
 <body>
   <!-- Navigation -->
-  <nav class="fixed top-0 w-full z-50 backdrop-blur-xl bg-black/50 border-b border-white/5">
+  <nav class="fixed top-0 w-full z-50 backdrop-blur-xl bg-black/60 border-b border-white/5">
     <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
       <a href="#" class="flex items-center gap-2">
         <span class="text-2xl">🦞</span>
@@ -167,9 +200,8 @@
       </a>
       <div class="hidden md:flex items-center gap-8">
         <a href="#features" class="text-sm text-gray-400 hover:text-white transition">Features</a>
-        <a href="#showcase" class="text-sm text-gray-400 hover:text-white transition">Showcase</a>
-        <a href="#pricing" class="text-sm text-gray-400 hover:text-white transition">Pricing</a>
-        <a href="/feedback" class="text-sm text-gray-400 hover:text-white transition">Feedback</a>
+        <a href="#screenshots" class="text-sm text-gray-400 hover:text-white transition">Screenshots</a>
+        <a href="#download" class="text-sm text-gray-400 hover:text-white transition">Download</a>
         <a href="https://github.com/fynntang/MockAPI" class="text-sm text-gray-400 hover:text-white transition">GitHub</a>
       </div>
       <div class="flex items-center gap-3">
@@ -185,7 +217,7 @@
     <div class="hero-bg"></div>
     <div class="grid-bg"></div>
     
-    <div class="relative z-10 text-center px-6 pt-20">
+    <div class="relative z-10 text-center px-6 pt-20 pb-10">
       <!-- Badge -->
       <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 mb-8">
         <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
@@ -193,21 +225,20 @@
       </div>
       
       <!-- Headline -->
-      <h1 class="text-6xl md:text-8xl font-black mb-6 leading-tight">
+      <h1 class="text-5xl md:text-7xl font-black mb-6 leading-tight">
         <span class="gradient-text glow-text">Mock APIs</span>
         <br>
         <span class="text-white">in Seconds</span>
       </h1>
       
       <!-- Subtitle -->
-      <p class="text-xl md:text-2xl text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+      <p class="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed">
         The fastest way to mock REST, GraphQL, WebSocket, and gRPC.
-        <br class="hidden md:block">
         <span class="text-white">Zero dependencies. One binary.</span>
       </p>
       
       <!-- CTAs -->
-      <div class="flex flex-col sm:flex-row gap-4 justify-center mb-10">
+      <div class="flex flex-col sm:flex-row gap-4 justify-center mb-8">
         <a href="https://github.com/fynntang/MockAPI/releases" class="btn-primary px-8 py-4 rounded-xl text-lg font-semibold relative z-10 animate-pulse-glow">
           <span class="relative z-10 flex items-center justify-center gap-2">
             <span>Download Free</span>
@@ -222,10 +253,12 @@
         </a>
       </div>
       
-      <!-- Product Hunt Badge -->
-      <a href="https://www.producthunt.com/posts/mockapi-4" target="_blank" class="inline-block hover:opacity-80 transition">
-        <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=mockapi-4&theme=dark" alt="MockAPI on Product Hunt" width="250" height="54" />
-      </a>
+      <!-- Hero Screenshot -->
+      <div class="max-w-5xl mx-auto mt-8">
+        <div class="screenshot-card rounded-2xl overflow-hidden glow-purple">
+          <img src="screenshots/00-main-routes.png" alt="MockAPI Main Interface" class="w-full">
+        </div>
+      </div>
       
       <!-- Scroll Indicator -->
       <div class="absolute bottom-8 left-1/2 scroll-indicator">
@@ -236,38 +269,8 @@
     </div>
   </section>
 
-  <!-- Code Demo -->
-  <section id="showcase" class="relative py-24 px-6">
-    <div class="max-w-5xl mx-auto">
-      <div class="code-window rounded-2xl overflow-hidden animate-float">
-        <!-- Window Header -->
-        <div class="flex items-center gap-2 px-4 py-3 bg-black/40 border-b border-white/5">
-          <div class="code-dot bg-red-500"></div>
-          <div class="code-dot bg-yellow-500"></div>
-          <div class="code-dot bg-green-500"></div>
-          <span class="ml-4 text-xs text-gray-500 font-mono">terminal</span>
-        </div>
-        <!-- Code Content -->
-        <div class="p-6 font-mono text-sm">
-          <div class="text-gray-500 mb-2"># Install & Run in 2 commands</div>
-          <div class="mb-4">
-            <span class="text-purple-400">$</span>
-            <span class="text-white"> go install github.com/fynntang/MockAPI@latest</span>
-          </div>
-          <div>
-            <span class="text-purple-400">$</span>
-            <span class="text-white"> mockapi serve</span>
-          </div>
-          <div class="mt-4 text-gray-500">
-            ✓ Server running at <span class="text-green-400">http://localhost:8088</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
   <!-- Stats Section -->
-  <section class="py-24 px-6 border-y border-white/5">
+  <section class="py-20 px-6 border-y border-white/5">
     <div class="max-w-6xl mx-auto">
       <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
         <div>
@@ -290,8 +293,157 @@
     </div>
   </section>
 
+  <!-- Screenshots Gallery -->
+  <section id="screenshots" class="py-24 px-6">
+    <div class="max-w-7xl mx-auto">
+      <div class="text-center mb-16">
+        <h2 class="text-4xl md:text-5xl font-bold mb-4">
+          See It In Action
+        </h2>
+        <p class="text-xl text-gray-400">A beautiful dark-themed Web UI for managing all your mock endpoints</p>
+      </div>
+      
+      <!-- REST Mock -->
+      <div class="mb-16">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="feature-badge px-4 py-2 rounded-lg">
+            <span class="text-2xl mr-2">⚡</span>
+            <span class="font-semibold">REST Mock</span>
+          </div>
+        </div>
+        <div class="grid md:grid-cols-3 gap-6">
+          <div class="screenshot-card rounded-xl overflow-hidden">
+            <img src="screenshots/00-main-routes.png" alt="Main Routes View" class="w-full">
+            <div class="p-4 border-t border-white/5">
+              <h4 class="font-semibold mb-1">Routes Dashboard</h4>
+              <p class="text-sm text-gray-400">View and manage all your mock routes in one place</p>
+            </div>
+          </div>
+          <div class="screenshot-card rounded-xl overflow-hidden">
+            <img src="screenshots/01-add-route-modal.png" alt="Add Route Modal" class="w-full">
+            <div class="p-4 border-t border-white/5">
+              <h4 class="font-semibold mb-1">Add Route Modal</h4>
+              <p class="text-sm text-gray-400">Create routes with path parameters and wildcards</p>
+            </div>
+          </div>
+          <div class="screenshot-card rounded-xl overflow-hidden">
+            <img src="screenshots/02-quick-templates.png" alt="Quick Templates" class="w-full">
+            <div class="p-4 border-t border-white/5">
+              <h4 class="font-semibold mb-1">Quick Templates</h4>
+              <p class="text-sm text-gray-400">12+ pre-built templates for common patterns</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- GraphQL -->
+      <div class="mb-16">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="feature-badge px-4 py-2 rounded-lg">
+            <span class="text-2xl mr-2">◈</span>
+            <span class="font-semibold">GraphQL Mock</span>
+          </div>
+        </div>
+        <div class="grid md:grid-cols-2 gap-6 max-w-4xl">
+          <div class="screenshot-card rounded-xl overflow-hidden">
+            <img src="screenshots/03-graphql-tab.png" alt="GraphQL Tab" class="w-full">
+            <div class="p-4 border-t border-white/5">
+              <h4 class="font-semibold mb-1">GraphQL Tab</h4>
+              <p class="text-sm text-gray-400">Manage GraphQL queries and mutations</p>
+            </div>
+          </div>
+          <div class="screenshot-card rounded-xl overflow-hidden">
+            <img src="screenshots/04-add-graphql.png" alt="Add GraphQL Mock" class="w-full">
+            <div class="p-4 border-t border-white/5">
+              <h4 class="font-semibold mb-1">Add GraphQL Mock</h4>
+              <p class="text-sm text-gray-400">Define operation-based mock responses</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- gRPC -->
+      <div class="mb-16">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="feature-badge px-4 py-2 rounded-lg">
+            <span class="text-2xl mr-2">🔄</span>
+            <span class="font-semibold">gRPC Mock</span>
+          </div>
+        </div>
+        <div class="grid md:grid-cols-3 gap-6">
+          <div class="screenshot-card rounded-xl overflow-hidden">
+            <img src="screenshots/05-grpc-tab.png" alt="gRPC Tab" class="w-full">
+            <div class="p-4 border-t border-white/5">
+              <h4 class="font-semibold mb-1">gRPC Tab</h4>
+              <p class="text-sm text-gray-400">gRPC-Web compatible endpoints</p>
+            </div>
+          </div>
+          <div class="screenshot-card rounded-xl overflow-hidden">
+            <img src="screenshots/06-add-grpc.png" alt="Add gRPC Mock" class="w-full">
+            <div class="p-4 border-t border-white/5">
+              <h4 class="font-semibold mb-1">Add gRPC Mock</h4>
+              <p class="text-sm text-gray-400">Configure service and method mappings</p>
+            </div>
+          </div>
+          <div class="screenshot-card rounded-xl overflow-hidden">
+            <img src="screenshots/07-import-proto-grpc.png" alt="Import Proto" class="w-full">
+            <div class="p-4 border-t border-white/5">
+              <h4 class="font-semibold mb-1">Import Proto</h4>
+              <p class="text-sm text-gray-400">Auto-generate mocks from .proto files</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- WebSocket -->
+      <div class="mb-16">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="feature-badge px-4 py-2 rounded-lg">
+            <span class="text-2xl mr-2">🔌</span>
+            <span class="font-semibold">WebSocket Mock</span>
+          </div>
+        </div>
+        <div class="grid md:grid-cols-2 gap-6 max-w-4xl">
+          <div class="screenshot-card rounded-xl overflow-hidden">
+            <img src="screenshots/08-websocket-tab.png" alt="WebSocket Tab" class="w-full">
+            <div class="p-4 border-t border-white/5">
+              <h4 class="font-semibold mb-1">WebSocket Tab</h4>
+              <p class="text-sm text-gray-400">Manage WebSocket mock endpoints</p>
+            </div>
+          </div>
+          <div class="screenshot-card rounded-xl overflow-hidden">
+            <img src="screenshots/09-add-websocket.png" alt="Add WebSocket Mock" class="w-full">
+            <div class="p-4 border-t border-white/5">
+              <h4 class="font-semibold mb-1">Add WebSocket Mock</h4>
+              <p class="text-sm text-gray-400">Configure auto-reply or JS handlers</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Request Logs -->
+      <div>
+        <div class="flex items-center gap-3 mb-6">
+          <div class="feature-badge px-4 py-2 rounded-lg">
+            <span class="text-2xl mr-2">📋</span>
+            <span class="font-semibold">Request Logs</span>
+          </div>
+        </div>
+        <div class="max-w-2xl">
+          <div class="screenshot-card rounded-xl overflow-hidden">
+            <img src="screenshots/10-request-logs.png" alt="Request Logs" class="w-full">
+            <div class="p-4 border-t border-white/5">
+              <h4 class="font-semibold mb-1">Request Logs</h4>
+              <p class="text-sm text-gray-400">Debug and inspect all incoming requests in real-time</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- Features Grid -->
-  <section id="features" class="py-24 px-6">
+  <section id="features" class="py-24 px-6 border-t border-white/5">
     <div class="max-w-6xl mx-auto">
       <div class="text-center mb-16">
         <h2 class="text-4xl md:text-5xl font-bold mb-4">
@@ -301,7 +453,6 @@
       </div>
       
       <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <!-- Feature Cards -->
         <div class="card p-8 rounded-2xl">
           <div class="text-4xl mb-4">⚡</div>
           <h3 class="text-xl font-semibold mb-2">REST Mock</h3>
@@ -351,93 +502,53 @@
     </div>
   </section>
 
-  <!-- Pricing -->
-  <section id="pricing" class="py-24 px-6 bg-gradient-to-b from-transparent via-purple-950/20 to-transparent">
-    <div class="max-w-5xl mx-auto">
+  <!-- Quick Start -->
+  <section class="py-24 px-6">
+    <div class="max-w-4xl mx-auto">
       <div class="text-center mb-16">
-        <h2 class="text-4xl md:text-5xl font-bold mb-4">Simple Pricing</h2>
-        <p class="text-xl text-gray-400">Free forever for individuals</p>
+        <h2 class="text-4xl md:text-5xl font-bold mb-4">Get Started in 30 Seconds</h2>
       </div>
       
-      <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-        <!-- Free -->
-        <div class="card p-8 rounded-3xl">
-          <div class="mb-6">
-            <h3 class="text-2xl font-bold mb-1">Free</h3>
-            <div class="text-5xl font-black">$0</div>
-            <div class="text-gray-500 text-sm mt-1">Forever</div>
-          </div>
-          <ul class="space-y-4 mb-8">
-            <li class="flex items-center gap-3">
-              <span class="text-green-400">✓</span>
-              <span>All core features</span>
-            </li>
-            <li class="flex items-center gap-3">
-              <span class="text-green-400">✓</span>
-              <span>REST, GraphQL, WebSocket, gRPC</span>
-            </li>
-            <li class="flex items-center gap-3">
-              <span class="text-green-400">✓</span>
-              <span>Swagger import</span>
-            </li>
-            <li class="flex items-center gap-3">
-              <span class="text-green-400">✓</span>
-              <span>MIT License (Open Source)</span>
-            </li>
-            <li class="flex items-center gap-3">
-              <span class="text-green-400">✓</span>
-              <span>Community support</span>
-            </li>
-          </ul>
-          <a href="https://github.com/fynntang/MockAPI/releases" class="btn-primary block text-center py-3 rounded-xl font-semibold relative z-10">
-            <span class="relative z-10">Download Free</span>
-          </a>
+      <div class="code-window rounded-2xl overflow-hidden animate-float">
+        <!-- Window Header -->
+        <div class="flex items-center gap-2 px-4 py-3 bg-black/40 border-b border-white/5">
+          <div class="code-dot bg-red-500"></div>
+          <div class="code-dot bg-yellow-500"></div>
+          <div class="code-dot bg-green-500"></div>
+          <span class="ml-4 text-xs text-gray-500 font-mono">terminal</span>
         </div>
-        
-        <!-- Pro -->
-        <div class="relative card p-8 rounded-3xl border-purple-500/30">
-          <div class="absolute -top-3 right-6 bg-gradient-to-r from-purple-500 to-indigo-500 px-4 py-1 rounded-full text-xs font-bold">
-            COMING SOON
+        <!-- Code Content -->
+        <div class="p-6 font-mono text-sm space-y-4">
+          <div>
+            <span class="text-gray-500"># Install via Go</span>
           </div>
-          <div class="mb-6">
-            <h3 class="text-2xl font-bold mb-1">Pro</h3>
-            <div class="text-5xl font-black">$15<span class="text-2xl text-gray-400 font-normal">/mo</span></div>
+          <div>
+            <span class="text-purple-400">$</span>
+            <span class="text-white"> go install github.com/fynntang/MockAPI@latest</span>
           </div>
-          <ul class="space-y-4 mb-8">
-            <li class="flex items-center gap-3">
-              <span class="text-purple-400">✓</span>
-              <span>Everything in Free</span>
-            </li>
-            <li class="flex items-center gap-3">
-              <span class="text-purple-400">✓</span>
-              <span>Team collaboration</span>
-            </li>
-            <li class="flex items-center gap-3">
-              <span class="text-purple-400">✓</span>
-              <span>Cloud sync</span>
-            </li>
-            <li class="flex items-center gap-3">
-              <span class="text-purple-400">✓</span>
-              <span>Priority support</span>
-            </li>
-            <li class="flex items-center gap-3">
-              <span class="text-purple-400">✓</span>
-              <span>Usage analytics</span>
-            </li>
-          </ul>
-          <button disabled class="w-full py-3 rounded-xl font-semibold bg-white/5 border border-white/10 text-gray-500 cursor-not-allowed">
-            Coming Soon
-          </button>
+          <div class="pt-4">
+            <span class="text-gray-500"># Start the server</span>
+          </div>
+          <div>
+            <span class="text-purple-400">$</span>
+            <span class="text-white"> mockapi serve</span>
+          </div>
+          <div class="pt-4 text-green-400">
+            ✓ Server running at http://localhost:8088
+          </div>
+          <div class="text-green-400">
+            ✓ Web UI available at http://localhost:8088/_ui
+          </div>
         </div>
       </div>
     </div>
   </section>
 
   <!-- Download -->
-  <section id="download" class="py-24 px-6">
+  <section id="download" class="py-24 px-6 border-t border-white/5">
     <div class="max-w-5xl mx-auto text-center">
-      <h2 class="text-4xl md:text-5xl font-bold mb-4">Get Started Now</h2>
-      <p class="text-xl text-gray-400 mb-12">Download and run in seconds</p>
+      <h2 class="text-4xl md:text-5xl font-bold mb-4">Download Now</h2>
+      <p class="text-xl text-gray-400 mb-12">Available for all platforms</p>
       
       <div class="grid md:grid-cols-3 gap-6">
         <div class="card p-6 rounded-2xl text-left">
