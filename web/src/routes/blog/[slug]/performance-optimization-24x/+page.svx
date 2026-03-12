@@ -1,0 +1,324 @@
+---
+title: 我用 Go 写了一个 Mock 服务器，性能提升了 24 倍
+description: 零依赖、单二进制、功能完整、高性能的 API Mock 服务器
+date: 2026-03-12
+author: fynntang
+tags: [Go, MockAPI, Performance, Open Source]
+---
+
+作为一名全栈开发者，我每天都在和 API 打交道。前端开发等后端接口、第三方 API 限流、微服务联调......这些场景都需要 Mock 数据。
+
+试过不少 Mock 工具，但总觉得差点意思：
+
+- **MockServer**：功能强大但太重，需要 JVM
+- **JSON Server**：轻量但只支持 REST，不支持动态响应
+- **Postman Mock**：需要联网，付费才能团队协作
+
+于是我决定自己造轮子。目标很简单：
+
+> **零依赖、单二进制、功能完整、高性能**
+
+三个月后，MockAPI 诞生了。
+
+## 成果一览
+
+| 指标 | 数值 |
+|------|------|
+| 运行时依赖 | 0 |
+| 安装方式 | `go install` 一条命令 |
+| 启动时间 | < 100ms |
+| 路由匹配性能 | 提升 **24 倍** |
+| 内存占用 | 减少 **94%** |
+
+支持的功能：
+- ✅ REST Mock（动态路由、路径参数、条件响应）
+- ✅ GraphQL Mock
+- ✅ WebSocket Mock
+- ✅ gRPC-Web Mock
+- ✅ JavaScript 脚本引擎
+- ✅ Swagger/OpenAPI 导入
+- ✅ 内置 Web UI
+- ✅ 热重载
+
+## 技术选型：为什么是 Go？
+
+选择 Go 不是因为我只会 Go（虽然这也有关系），而是它完美契合这个场景：
+
+### 1. 零运行时依赖
+
+编译成单个二进制文件，用户不需要安装 Node.js、JVM 或任何其他运行时。下载即用，上传即跑。
+
+```bash
+# 安装
+go install github.com/fynntang/MockAPI@latest
+
+# 启动
+mockapi serve
+
+# 完成！
+```
+
+### 2. 标准库足够强大
+
+Go 的 `net/http` 性能优异，`encoding/json` 够用，`embed` 可以把 Web UI 嵌入二进制。不需要引入重型框架。
+
+### 3. 跨平台编译
+
+一次编译，到处运行：
+
+```bash
+GOOS=darwin GOARCH=amd64 go build  # macOS
+GOOS=linux GOARCH=amd64 go build   # Linux
+GOOS=windows GOARCH=amd64 go build # Windows
+```
+
+### 4. 部署简单
+
+没有复杂的依赖关系，不需要 Docker 也能轻松部署。当然，如果你喜欢容器化：
+
+```bash
+docker run -p 8088:8088 mockapi
+```
+
+## 性能优化：从 O(n) 到 O(1)
+
+项目初期，路由匹配是这样的：
+
+```go
+// 线性搜索 O(n)
+func (s *Server) matchRoute(method, path string) *Route {
+    for _, route := range s.routes {
+        if route.Method == method && route.Match(path) {
+            return route
+        }
+    }
+    return nil
+}
+```
+
+当路由数量少时没问题，但随着功能增加，性能急剧下降：
+
+```
+100 个路由：  ~500ns
+1000 个路由： ~5ms
+10000 个路由：~50ms  // 不可接受！
+```
+
+### 解决方案：RouteIndex
+
+我设计了一个两层索引结构：
+
+```
+┌─────────────────────────────────────────┐
+│              RouteIndex                  │
+├─────────────────────────────────────────┤
+│ exact: map["GET:/users"] -> Route       │  ← O(1)
+├─────────────────────────────────────────┤
+│ param: map["GET:/users"] -> []Route     │  ← O(k)
+│        map["GET:/posts"] -> []Route     │
+├─────────────────────────────────────────┤
+│ wildcard: map["GET"] -> []Route         │  ← O(m)
+└─────────────────────────────────────────┘
+```
+
+匹配逻辑：
+
+1. **精确匹配**：直接查 map，O(1)
+2. **参数路由**：按前缀分组，大幅减少候选集
+3. **通配符路由**：按方法分组
+
+### 优化效果
+
+```
+优化前：BenchmarkRouteMatch-8    231218    5169 ns/op    6400 B/op
+优化后：BenchmarkRouteMatch-8    5589621   214 ns/op     68 B/op
+
+性能提升：24 倍
+内存减少：94%
+```
+
+这就是算法优化的力量。没有黑魔法，只是把数据结构选对了。
+
+## 核心功能实现
+
+### 1. 动态路由
+
+支持 `:param` 参数和 `*` 通配符：
+
+```yaml
+# routes.json
+- path: /users/:id
+  method: GET
+  response:
+    body: |
+      {
+        "id": {{params.id}},
+        "name": "User {{params.id}}"
+      }
+
+- path: /api/*
+  method: ANY
+  proxy: https://real-api.com
+```
+
+### 2. JavaScript 脚本引擎
+
+当静态响应不够用时，可以用 JavaScript 动态生成：
+
+```javascript
+// 条件响应
+if (headers["x-api-key"] === "secret") {
+  return { authorized: true, user: "admin" };
+}
+
+// 模拟延迟
+sleep(100);
+return { data: "delayed response" };
+
+// 随机数据
+return {
+  id: Math.floor(Math.random() * 1000),
+  name: faker.name(),
+  email: faker.email()
+};
+```
+
+### 3. Swagger/OpenAPI 导入
+
+有现成的 API 文档？一键导入：
+
+```bash
+mockapi import swagger.yaml
+```
+
+自动解析所有端点，生成 Mock 路由。
+
+### 4. GraphQL Mock
+
+支持 Query 和 Mutation：
+
+```yaml
+- operation: GetUser
+  response:
+    data:
+      user:
+        id: "1"
+        name: "John"
+```
+
+### 5. WebSocket Mock
+
+模拟实时数据推送：
+
+```yaml
+- path: /ws/chat
+  messages:
+    - delay: 1000
+      data: "Hello!"
+    - delay: 2000
+      data: "How are you?"
+```
+
+## 内置 Web UI
+
+不想写配置文件？打开浏览器就能管理：
+
+```
+http://localhost:8088/_ui
+```
+
+功能：
+- 📋 路由列表和管理
+- ➕ 可视化添加路由
+- 📝 快速模板（12+ 预设）
+- 📊 请求日志查看
+- 🔍 实时调试
+
+## 实战案例
+
+### 场景 1：前端开发
+
+后端 API 还没好？自己 Mock：
+
+```bash
+# 1. 创建配置
+mockapi init
+
+# 2. 添加路由（或用 Web UI）
+# 3. 启动服务
+mockapi serve
+
+# 4. 前端请求 http://localhost:8088/api/...
+```
+
+### 场景 2：第三方 API 开发
+
+调用外部 API 有限流？Mock 它：
+
+```yaml
+- path: /external/*
+  proxy: https://api.external.com
+  rateLimit: 10/s
+```
+
+未匹配的请求转发到真实 API，匹配的返回 Mock 数据。
+
+### 场景 3：团队协作
+
+把 `routes/` 目录加入 Git：
+
+```bash
+git add routes/
+git commit -m "Add mock routes"
+```
+
+团队成员 `git pull` 后自动同步 Mock 数据。
+
+## 对比其他方案
+
+| 特性 | MockAPI | MockServer | JSON Server | Postman Mock |
+|------|---------|------------|-------------|--------------|
+| 零依赖 | ✅ | ❌ (JVM) | ❌ (Node.js) | ❌ (联网) |
+| 动态响应 | ✅ | ✅ | ❌ | ✅ |
+| GraphQL | ✅ | ❌ | ❌ | ✅ |
+| WebSocket | ✅ | ✅ | ❌ | ❌ |
+| gRPC | ✅ | ❌ | ❌ | ❌ |
+| Web UI | ✅ | ❌ | ❌ | ✅ |
+| 开源 | ✅ | ✅ | ✅ | ❌ |
+
+## 快速开始
+
+```bash
+# 安装
+go install github.com/fynntang/MockAPI@latest
+
+# 启动
+mockapi serve
+
+# 打开 Web UI
+open http://localhost:8088/_ui
+```
+
+就这么简单！
+
+## 项目地址
+
+- **GitHub**: https://github.com/fynntang/MockAPI
+- **官网**: https://mockapi.work
+
+如果这个项目对你有帮助，欢迎 Star ⭐
+
+## 写在最后
+
+开发 MockAPI 的过程让我学到了很多：
+
+1. **简单往往更好** - 零依赖比功能堆砌更重要
+2. **性能要趁早考虑** - 好的数据结构胜过后期优化
+3. **开发者体验很重要** - CLI 和 Web UI 大幅提升易用性
+4. **测试驱动开发** - 26 个测试用例让我睡得安稳
+
+如果你也需要一个轻量级 Mock 服务器，不妨试试 MockAPI。有问题或建议，欢迎在 GitHub 提 Issue！
+
+---
+
+*Happy Mocking! 🦞*

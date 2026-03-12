@@ -37,6 +37,7 @@
 		"formsnap": "^2.0.1",
 		"globals": "^17.3.0",
 		"layerchart": "2.0.0-next.43",
+		"mdsvex": "^0.12.6",
 		"mode-watcher": "^1.1.0",
 		"paneforge": "^1.0.2",
 		"prettier": "^3.8.1",
