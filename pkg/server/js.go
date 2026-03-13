@@ -27,6 +27,7 @@ document.querySelectorAll(".tab").forEach(tab => {
 
 // --- Routes ---
 let editingId = null;
+let editingWSPath = null;
 
 async function loadRoutes() {
   const res = await fetch(API);
@@ -210,6 +211,7 @@ async function loadWSHandlers() {
 
   el.innerHTML = handlers.map(h => {
     const desc = h.description ? '<span class="desc">' + escapeHtml(h.description) + '</span>' : '';
+    const handlerData = encodeURIComponent(JSON.stringify(h));
     return '<div class="route">' +
       '<div class="route-info">' +
         '<span class="method ws">WS</span>' +
@@ -219,6 +221,7 @@ async function loadWSHandlers() {
       '</div>' +
       '<div class="route-actions">' +
         '<button class="copy" onclick="copyWSUrl(\'' + escapeHtml(h.path) + '\')" title="Copy URL">📋</button>' +
+        '<button class="copy" onclick="editWSHandler(\'' + handlerData + '\')" title="Edit">✏️</button>' +
         '<button class="del" onclick="deleteWSHandler(\'' + escapeHtml(h.path) + '\')" title="Delete">✕</button>' +
       '</div>' +
     '</div>';
@@ -226,12 +229,25 @@ async function loadWSHandlers() {
 }
 
 function openWSModal() {
+  editingWSPath = null;
   document.getElementById("ws-path").value = "";
   document.getElementById("ws-desc").value = "";
   document.getElementById("ws-delay").value = "0";
   document.getElementById("ws-auto-reply").value = "";
   document.getElementById("ws-on-connect").value = "";
   document.getElementById("ws-on-message").value = "";
+  document.getElementById("ws-modal").style.display = "";
+}
+
+function editWSHandler(data) {
+  const h = JSON.parse(decodeURIComponent(data));
+  editingWSPath = h.path;
+  document.getElementById("ws-path").value = h.path;
+  document.getElementById("ws-desc").value = h.description || "";
+  document.getElementById("ws-delay").value = h.delay_ms || h.delay || 0;
+  document.getElementById("ws-auto-reply").value = h.auto_reply || "";
+  document.getElementById("ws-on-connect").value = h.on_connect || "";
+  document.getElementById("ws-on-message").value = h.on_message || "";
   document.getElementById("ws-modal").style.display = "";
 }
 
@@ -248,11 +264,21 @@ async function saveWSHandler() {
   };
   if (!h.path) { alert("Path is required"); return; }
 
-  await fetch(WS_API, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(h),
-  });
+  if (editingWSPath) {
+    // Editing existing handler - use PUT
+    await fetch(WS_API + "?old_path=" + encodeURIComponent(editingWSPath), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(h),
+    });
+  } else {
+    // Adding new handler - use POST
+    await fetch(WS_API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(h),
+    });
+  }
 
   closeWSModal();
   loadWSHandlers();

@@ -600,6 +600,20 @@ func (s *Server) handleAPIWS(w http.ResponseWriter, r *http.Request) {
 		s.wsMock.AddHandler(h)
 		json.NewEncoder(w).Encode(h)
 
+	case http.MethodPut:
+		var h ws.WSHandler
+		if err := json.NewDecoder(r.Body).Decode(&h); err != nil {
+			http.Error(w, err.Error(), 400)
+			return
+		}
+		// Delete old handler if path exists
+		oldPath := r.URL.Query().Get("old_path")
+		if oldPath != "" {
+			s.wsMock.DeleteHandler(oldPath)
+		}
+		s.wsMock.AddHandler(h)
+		json.NewEncoder(w).Encode(h)
+
 	case http.MethodDelete:
 		path := r.URL.Query().Get("path")
 		if path == "" {
