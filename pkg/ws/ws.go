@@ -42,7 +42,14 @@ func New() *MockWS {
 func (m *MockWS) AddHandler(h WSHandler) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.handlers[h.Path] = &h
+	
+	// Normalize path: ensure it starts with /
+	path := h.Path
+	if !strings.HasPrefix(path, "/") && path != "" {
+		path = "/" + path
+	}
+	h.Path = path
+	m.handlers[path] = &h
 }
 
 func (m *MockWS) GetHandler(path string) *WSHandler {
@@ -61,13 +68,49 @@ func (m *MockWS) ListHandlers() []*WSHandler {
 	return result
 }
 
+func (m *MockWS) DeleteHandler(path string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	
+	// Normalize path: ensure it starts with /
+	normalizedPath := path
+	if !strings.HasPrefix(normalizedPath, "/") {
+		normalizedPath = "/" + normalizedPath
+	}
+	
+	if _, exists := m.handlers[normalizedPath]; exists {
+		delete(m.handlers, normalizedPath)
+		return true
+	}
+	
+	// Also try the original path (in case user stored it differently)
+	if _, exists := m.handlers[path]; exists {
+		delete(m.handlers, path)
+		return true
+	}
+	
+	return false
+}
+
 // HandleWS upgrades HTTP connection to WebSocket and handles messages
 func (m *MockWS) HandleWS(w http.ResponseWriter, r *http.Request, scriptEngine *script.Engine) {
 	path := strings.TrimPrefix(r.URL.Path, "/ws")
 	
+	// Normalize path: ensure it starts with /
+	if !strings.HasPrefix(path, "/") && path != "" {
+		path = "/" + path
+	}
+	
 	handler := m.GetHandler(path)
 	if handler == nil {
-		http.Error(w, "No WebSocket handler for this path", 404)
+		// Try to find handler without leading slash (compatibility)
+		if strings.HasPrefix(path, "/") {
+			handler = m.GetHandler(path[1:])
+		}
+	}
+	
+	if handler == nil {
+		http.Error(w, "No WebSocket handler for this path: "+path, 404)
 		return
 	}
 

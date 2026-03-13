@@ -602,7 +602,14 @@ func (s *Server) handleAPIWS(w http.ResponseWriter, r *http.Request) {
 
 	case http.MethodDelete:
 		path := r.URL.Query().Get("path")
-		_ = path // for now
+		if path == "" {
+			http.Error(w, "path parameter is required", 400)
+			return
+		}
+		if !s.wsMock.DeleteHandler(path) {
+			http.Error(w, "handler not found: "+path, 404)
+			return
+		}
 		w.WriteHeader(204)
 	}
 }
