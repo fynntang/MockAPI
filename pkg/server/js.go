@@ -27,6 +27,7 @@ document.querySelectorAll(".tab").forEach(tab => {
 
 // --- Routes ---
 let editingId = null;
+let editingWSPath = null;
 
 async function loadRoutes() {
   const res = await fetch(API);
@@ -210,49 +211,155 @@ async function loadWSHandlers() {
 
   el.innerHTML = handlers.map(h => {
     const desc = h.description ? '<span class="desc">' + escapeHtml(h.description) + '</span>' : '';
+    const streamBadge = h.stream_enabled ? '<span class="stream-badge" title="Stream Mode">📡</span>' : '';
+    const delayBadge = (h.delay_ms != null ? h.delay_ms : h.delay) != null ? '<span class="status">' + (h.delay_ms ?? h.delay) + 'ms</span>' : '';
+    const handlerData = encodeURIComponent(JSON.stringify(h));
     return '<div class="route">' +
       '<div class="route-info">' +
         '<span class="method ws">WS</span>' +
         '<code>' + escapeHtml(h.path) + '</code>' +
-        desc +
-        (h.delay ? '<span class="status">' + h.delay + 'ms</span>' : '') +
+        streamBadge + desc + delayBadge +
       '</div>' +
       '<div class="route-actions">' +
         '<button class="copy" onclick="copyWSUrl(\'' + escapeHtml(h.path) + '\')" title="Copy URL">📋</button>' +
+        '<button class="copy" onclick="editWSHandler(\'' + handlerData + '\')" title="Edit">✏️</button>' +
         '<button class="del" onclick="deleteWSHandler(\'' + escapeHtml(h.path) + '\')" title="Delete">✕</button>' +
       '</div>' +
     '</div>';
   }).join("");
 }
 
+function toggleWSMode() {
+  const mode = document.getElementById("ws-mode").value;
+  document.getElementById("ws-reply-mode").style.display = mode === "reply" ? "" : "none";
+  document.getElementById("ws-stream-mode").style.display = mode === "stream" ? "" : "none";
+}
+
+function toggleStreamInterval() {
+  const type = document.getElementById("ws-stream-interval-type").value;
+  document.getElementById("ws-fixed-interval").style.display = type === "fixed" ? "" : "none";
+  document.getElementById("ws-random-interval").style.display = type === "random" ? "" : "none";
+}
+
 function openWSModal() {
+  editingWSPath = null;
+  document.getElementById("ws-modal-title").textContent = "Add WebSocket Handler";
   document.getElementById("ws-path").value = "";
   document.getElementById("ws-desc").value = "";
+  document.getElementById("ws-mode").value = "reply";
   document.getElementById("ws-delay").value = "0";
   document.getElementById("ws-auto-reply").value = "";
   document.getElementById("ws-on-connect").value = "";
   document.getElementById("ws-on-message").value = "";
+  // Stream mode fields
+  document.getElementById("ws-stream-messages").value = "";
+  document.getElementById("ws-stream-interval-type").value = "fixed";
+  document.getElementById("ws-stream-interval").value = "1000";
+  document.getElementById("ws-stream-min-delay").value = "500";
+  document.getElementById("ws-stream-max-delay").value = "3000";
+  document.getElementById("ws-stream-format").value = "json";
+  document.getElementById("ws-stream-loop").checked = true;
+  document.getElementById("ws-stream-on-connect").value = "";
+  toggleWSMode();
+  toggleStreamInterval();
+  document.getElementById("ws-modal").style.display = "";
+}
+
+function editWSHandler(data) {
+  const h = JSON.parse(decodeURIComponent(data));
+  editingWSPath = h.path;
+  document.getElementById("ws-modal-title").textContent = "Edit WebSocket Handler";
+  document.getElementById("ws-path").value = h.path;
+  document.getElementById("ws-desc").value = h.description || "";
+  
+  // Determine mode
+  const isStream = h.stream_enabled;
+  document.getElementById("ws-mode").value = isStream ? "stream" : "reply";
+  
+  // Reply mode fields
+  document.getElementById("ws-delay").value = h.delay_ms ?? h.delay ?? 0;
+  document.getElementById("ws-auto-reply").value = h.auto_reply || "";
+  document.getElementById("ws-on-connect").value = isStream ? (h.stream_on_connect || "") : (h.on_connect || "");
+  document.getElementById("ws-on-message").value = h.on_message || "";
+  
+  // Stream mode fields
+  document.getElementById("ws-stream-messages").value = (h.stream_messages || []).join("\n");
+  document.getElementById("ws-stream-interval").value = h.stream_interval_ms ?? 1000;
+  document.getElementById("ws-stream-min-delay").value = h.stream_min_delay_ms ?? 500;
+  document.getElementById("ws-stream-max-delay").value = h.stream_max_delay_ms ?? 3000;
+  document.getElementById("ws-stream-format").value = h.stream_format || "json";
+  document.getElementById("ws-stream-loop").checked = h.stream_loop !== false;
+  
+  // Set interval type
+  if (h.stream_random) {
+    document.getElementById("ws-stream-interval-type").value = "random";
+  } else {
+    document.getElementById("ws-stream-interval-type").value = "fixed";
+  }
+  
+  toggleWSMode();
+  toggleStreamInterval();
   document.getElementById("ws-modal").style.display = "";
 }
 
 function closeWSModal() { document.getElementById("ws-modal").style.display = "none"; }
 
 async function saveWSHandler() {
+  const mode = document.getElementById("ws-mode").value;
+  
   const h = {
     path: document.getElementById("ws-path").value,
     description: document.getElementById("ws-desc").value,
-    delay: parseInt(document.getElementById("ws-delay").value) || 0,
-    auto_reply: document.getElementById("ws-auto-reply").value,
-    on_connect: document.getElementById("ws-on-connect").value,
-    on_message: document.getElementById("ws-on-message").value,
   };
+  
   if (!h.path) { alert("Path is required"); return; }
+  
+  if (mode === "stream") {
+    // Stream mode
+    const messagesText = document.getElementById("ws-stream-messages").value;
+    const messages = messagesText.split("\n").map(m => m.trim()).filter(m => m);
+    
+    if (messages.length === 0) { alert("At least one message is required for stream mode"); return; }
+    
+    h.stream_enabled = true;
+    h.stream_messages = messages;
+    h.stream_format = document.getElementById("ws-stream-format").value;
+    h.stream_loop = document.getElementById("ws-stream-loop").checked;
+    
+    const intervalType = document.getElementById("ws-stream-interval-type").value;
+    if (intervalType === "random") {
+      h.stream_random = true;
+      h.stream_min_delay_ms = parseInt(document.getElementById("ws-stream-min-delay").value) || 500;
+      h.stream_max_delay_ms = parseInt(document.getElementById("ws-stream-max-delay").value) || 3000;
+    } else {
+      h.stream_random = false;
+      h.stream_interval_ms = parseInt(document.getElementById("ws-stream-interval").value) || 1000;
+    }
+    
+    const onConnect = document.getElementById("ws-stream-on-connect").value.trim();
+    if (onConnect) h.on_connect = onConnect;
+  } else {
+    // Reply mode
+    h.delay_ms = parseInt(document.getElementById("ws-delay").value) || 0;
+    h.auto_reply = document.getElementById("ws-auto-reply").value;
+    const onConnect = document.getElementById("ws-on-connect").value.trim();
+    if (onConnect) h.on_connect = onConnect;
+    h.on_message = document.getElementById("ws-on-message").value;
+  }
 
-  await fetch(WS_API, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(h),
-  });
+  if (editingWSPath) {
+    await fetch(WS_API + "?old_path=" + encodeURIComponent(editingWSPath), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(h),
+    });
+  } else {
+    await fetch(WS_API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(h),
+    });
+  }
 
   closeWSModal();
   loadWSHandlers();

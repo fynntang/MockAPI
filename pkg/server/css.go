@@ -253,6 +253,10 @@ button.del:hover { background: rgba(207,34,46,0.1); }
   display: inline-block; background: rgba(240,136,62,0.15); color: #f0883e;
   font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: 700;
 }
+.stream-badge {
+  display: inline-block; background: rgba(63,185,80,0.15); color: var(--accent-green);
+  font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: 700;
+}
 .proxy-badge {
   display: inline-block; background: rgba(9,105,218,0.15); color: var(--accent-blue);
   font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: 700;
