@@ -41,6 +41,27 @@ func New(cfg *config.Config, configFile string) *Server {
 		scriptEngine: script.New(),
 		wsMock:      ws.New(),
 	}
+	
+	// Load WebSocket handlers from config
+	for _, h := range cfg.WebSocket {
+		s.wsMock.AddHandler(ws.WSHandler{
+			Path:            h.Path,
+			Description:     h.Description,
+			OnConnect:       h.OnConnect,
+			OnMessage:       h.OnMessage,
+			AutoReply:       h.AutoReply,
+			Delay:           h.Delay,
+			StreamEnabled:   h.StreamEnabled,
+			StreamMessages:  h.StreamMessages,
+			StreamInterval:  h.StreamInterval,
+			StreamRandom:    h.StreamRandom,
+			StreamMinDelay:  h.StreamMinDelay,
+			StreamMaxDelay:  h.StreamMaxDelay,
+			StreamLoop:      h.StreamLoop,
+			StreamFormat:    h.StreamFormat,
+		})
+	}
+	
 	s.registerRoutes()
 	return s
 }
@@ -598,6 +619,8 @@ func (s *Server) handleAPIWS(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.wsMock.AddHandler(h)
+		s.syncWSToConfig()
+		s.cfg.Save(s.configFile)
 		json.NewEncoder(w).Encode(h)
 
 	case http.MethodPut:
@@ -612,6 +635,8 @@ func (s *Server) handleAPIWS(w http.ResponseWriter, r *http.Request) {
 			s.wsMock.DeleteHandler(oldPath)
 		}
 		s.wsMock.AddHandler(h)
+		s.syncWSToConfig()
+		s.cfg.Save(s.configFile)
 		json.NewEncoder(w).Encode(h)
 
 	case http.MethodDelete:
@@ -624,7 +649,33 @@ func (s *Server) handleAPIWS(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "handler not found: "+path, 404)
 			return
 		}
+		s.syncWSToConfig()
+		s.cfg.Save(s.configFile)
 		w.WriteHeader(204)
+	}
+}
+
+// syncWSToConfig syncs wsMock handlers to config.WebSocket for persistence
+func (s *Server) syncWSToConfig() {
+	handlers := s.wsMock.ListHandlers()
+	s.cfg.WebSocket = make([]config.WSHandler, len(handlers))
+	for i, h := range handlers {
+		s.cfg.WebSocket[i] = config.WSHandler{
+			Path:            h.Path,
+			Description:     h.Description,
+			OnConnect:       h.OnConnect,
+			OnMessage:       h.OnMessage,
+			AutoReply:       h.AutoReply,
+			Delay:           h.Delay,
+			StreamEnabled:   h.StreamEnabled,
+			StreamMessages:  h.StreamMessages,
+			StreamInterval:  h.StreamInterval,
+			StreamRandom:    h.StreamRandom,
+			StreamMinDelay:  h.StreamMinDelay,
+			StreamMaxDelay:  h.StreamMaxDelay,
+			StreamLoop:      h.StreamLoop,
+			StreamFormat:    h.StreamFormat,
+		}
 	}
 }
 

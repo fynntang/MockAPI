@@ -53,6 +53,24 @@ type GRPCHandler struct {
 	Description  string      `json:"description,omitempty"`
 }
 
+// WSHandler represents a WebSocket mock handler
+type WSHandler struct {
+	Path            string   `json:"path"`
+	Description     string   `json:"description,omitempty"`
+	OnConnect       string   `json:"on_connect,omitempty"`
+	OnMessage       string   `json:"on_message,omitempty"`
+	AutoReply       string   `json:"auto_reply,omitempty"`
+	Delay           int      `json:"delay_ms,omitempty"`
+	StreamEnabled   bool     `json:"stream_enabled,omitempty"`
+	StreamMessages  []string `json:"stream_messages,omitempty"`
+	StreamInterval  int      `json:"stream_interval_ms,omitempty"`
+	StreamRandom    bool     `json:"stream_random,omitempty"`
+	StreamMinDelay  int      `json:"stream_min_delay_ms,omitempty"`
+	StreamMaxDelay  int      `json:"stream_max_delay_ms,omitempty"`
+	StreamLoop      bool     `json:"stream_loop,omitempty"`
+	StreamFormat    string   `json:"stream_format,omitempty"`
+}
+
 type Config struct {
 	Port        int              `json:"port"`
 	Routes      []Route          `json:"routes"`
@@ -62,6 +80,7 @@ type Config struct {
 	ProxyURL    string           `json:"proxy_url,omitempty"`
 	GraphQL     []GraphQLHandler `json:"graphql,omitempty"`
 	GRPC        []GRPCHandler    `json:"grpc,omitempty"`
+	WebSocket   []WSHandler      `json:"websocket,omitempty"`
 	mu          sync.Mutex
 }
 
@@ -210,6 +229,48 @@ func (c *Config) FindGRPCHandler(service, method string) *GRPCHandler {
 	for i := range c.GRPC {
 		if c.GRPC[i].Service == service && c.GRPC[i].Method == method {
 			return &c.GRPC[i]
+		}
+	}
+	return nil
+}
+
+func (c *Config) AddWSHandler(h WSHandler) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.WebSocket = append(c.WebSocket, h)
+}
+
+func (c *Config) UpdateWSHandler(h WSHandler) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for i, existing := range c.WebSocket {
+		if existing.Path == h.Path {
+			c.WebSocket[i] = h
+			return
+		}
+	}
+	// If not found, add it
+	c.WebSocket = append(c.WebSocket, h)
+}
+
+func (c *Config) DeleteWSHandler(path string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for i, h := range c.WebSocket {
+		if h.Path == path {
+			c.WebSocket = append(c.WebSocket[:i], c.WebSocket[i+1:]...)
+			return true
+		}
+	}
+	return false
+}
+
+func (c *Config) FindWSHandler(path string) *WSHandler {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for i := range c.WebSocket {
+		if c.WebSocket[i].Path == path {
+			return &c.WebSocket[i]
 		}
 	}
 	return nil
