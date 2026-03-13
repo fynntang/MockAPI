@@ -7,6 +7,10 @@ Zero dependencies. One binary. Full-featured mock server with Web UI, JavaScript
 [![Go Report Card](https://goreportcard.com/badge/github.com/fynntang/MockAPI)](https://goreportcard.com/report/github.com/fynntang/MockAPI)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](https://opensource.org/licenses/MIT)
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?logo=go)](https://go.dev/)
+<a href="https://www.nxgntools.com/tools/mockapi?utm_source=mockapi" target="_blank" rel="noopener" style="display: inline-block; width: auto;">
+    <img src="https://www.nxgntools.com/api/embed/mockapi?type=FEATURED_ON&hideUpvotes=true" alt="Launching Soon on NextGen Tools" style="height: 48px; width: auto;" />
+</a>
+<a href="https://www.producthunt.com/products/mockapi-4?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-mockapi-4" target="_blank" rel="noopener noreferrer"><img alt="MockAPI - Lightweight Local API Mock Server One binary Full-featured. | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1095393&amp;theme=neutral&amp;t=1773409390030"></a>
 
 🌐 **Live Demo**: [mockapi.work](https://mockapi.work)
 
