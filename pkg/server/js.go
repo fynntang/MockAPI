@@ -22,6 +22,8 @@ document.querySelectorAll(".tab").forEach(tab => {
     if (tab.dataset.tab === "logs") loadLogs();
     if (tab.dataset.tab === "settings") loadSettings();
     if (tab.dataset.tab === "ws") loadWSHandlers();
+    if (tab.dataset.tab === "graphql") loadGraphQLHandlers();
+    if (tab.dataset.tab === "grpc") loadGRPCHandlers();
   });
 });
 
