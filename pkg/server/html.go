@@ -248,8 +248,8 @@ respond({
 
   <!-- WebSocket Modal -->
   <div id="ws-modal" class="modal" style="display:none;">
-    <div class="modal-content">
-      <h2>Add WebSocket Handler</h2>
+    <div class="modal-content wide">
+      <h2 id="ws-modal-title">Add WebSocket Handler</h2>
       <div class="form">
         <div class="row">
           <label>Path</label>
@@ -259,22 +259,84 @@ respond({
           <label>Description</label>
           <input id="ws-desc" placeholder="Optional description" />
         </div>
-        <div class="row">
-          <label>Delay (ms)</label>
-          <input id="ws-delay" type="number" value="0" />
-        </div>
+        
         <div class="row full">
-          <label>Auto Reply (JSON)</label>
-          <textarea id="ws-auto-reply" rows="3" placeholder='{"type": "echo", "data": "received"}'></textarea>
+          <label>Mode</label>
+          <select id="ws-mode" onchange="toggleWSMode()">
+            <option value="reply">Reply Mode (respond to messages)</option>
+            <option value="stream">Stream Mode (push messages)</option>
+          </select>
         </div>
-        <div class="row full">
-          <label>On Connect Message</label>
-          <textarea id="ws-on-connect" rows="2" placeholder='{"type": "connected"}'></textarea>
-        </div>
-        <div class="row full">
-          <label>On Message Script (JS, optional)</label>
-          <textarea id="ws-on-message" rows="5" placeholder='// body = incoming message
+        
+        <!-- Reply Mode Options -->
+        <div id="ws-reply-mode">
+          <div class="row">
+            <label>Delay (ms)</label>
+            <input id="ws-delay" type="number" value="0" />
+          </div>
+          <div class="row full">
+            <label>Auto Reply (JSON)</label>
+            <textarea id="ws-auto-reply" rows="3" placeholder='{"type": "echo", "data": "received"}'></textarea>
+          </div>
+          <div class="row full">
+            <label>On Connect Message</label>
+            <textarea id="ws-on-connect" rows="2" placeholder='{"type": "connected"}'></textarea>
+          </div>
+          <div class="row full">
+            <label>On Message Script (JS, optional)</label>
+            <textarea id="ws-on-message" rows="5" placeholder='// body = incoming message
 respond({body: JSON.stringify({echo: body})});'></textarea>
+          </div>
+        </div>
+        
+        <!-- Stream Mode Options -->
+        <div id="ws-stream-mode" style="display:none;">
+          <div class="row full">
+            <label>Messages to Stream (one per line)</label>
+            <textarea id="ws-stream-messages" rows="8" placeholder='{"type": "update", "value": 1}
+{"type": "update", "value": 2}
+{"type": "update", "value": 3}'></textarea>
+            <span class="help-text">Each line will be sent as a separate message</span>
+          </div>
+          <div class="row">
+            <label>Interval Type</label>
+            <select id="ws-stream-interval-type" onchange="toggleStreamInterval()">
+              <option value="fixed">Fixed Interval</option>
+              <option value="random">Random Interval</option>
+            </select>
+          </div>
+          <div id="ws-fixed-interval">
+            <div class="row">
+              <label>Interval (ms)</label>
+              <input id="ws-stream-interval" type="number" value="1000" />
+            </div>
+          </div>
+          <div id="ws-random-interval" style="display:none;">
+            <div class="row">
+              <label>Min Delay (ms)</label>
+              <input id="ws-stream-min-delay" type="number" value="500" />
+            </div>
+            <div class="row">
+              <label>Max Delay (ms)</label>
+              <input id="ws-stream-max-delay" type="number" value="3000" />
+            </div>
+          </div>
+          <div class="row">
+            <label>Format</label>
+            <select id="ws-stream-format">
+              <option value="json">JSON (auto-wrap non-JSON)</option>
+              <option value="text">Plain Text</option>
+            </select>
+          </div>
+          <div class="row">
+            <label>Loop</label>
+            <input type="checkbox" id="ws-stream-loop" checked />
+            <span class="help-text">Restart from beginning after all messages sent</span>
+          </div>
+          <div class="row full">
+            <label>On Connect Message</label>
+            <textarea id="ws-stream-on-connect" rows="2" placeholder='{"type": "stream_start"}'></textarea>
+          </div>
         </div>
       </div>
       <div class="actions">
