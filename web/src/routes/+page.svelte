@@ -102,7 +102,7 @@
 		
 		<div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
 			<a href="https://www.nxgntools.com/tools/mockapi?utm_source=mockapi" target="_blank" rel="noopener" class="inline-flex">
-				<img src="https://www.nxgntools.com/api/embed/mockapi?type=LAUNCHING_SOON_ON&hideUpvotes=true" alt="Launching Soon on NextGen Tools" class="h-12 w-auto" />
+				<img src="https://www.nxgntools.com/api/embed/mockapi?type=FEATURED_ON&hideUpvotes=true" alt="Launching Soon on NextGen Tools" class="h-12 w-auto" />
 			</a>
 			<a href="https://www.producthunt.com/products/mockapi-4?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-mockapi-4" target="_blank" rel="noopener noreferrer" class="inline-flex">
 				<img alt="MockAPI - Lightweight Local API Mock Server One binary Full-featured. | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1095393&amp;theme=neutral&amp;t=1773409390030">
