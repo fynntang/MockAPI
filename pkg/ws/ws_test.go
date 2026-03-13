@@ -23,9 +23,10 @@ func TestAddHandler(t *testing.T) {
 		t.Error("Expected to find handler at /notifications (normalized)")
 	}
 	
-	// Original path should also work due to normalization
+	// After normalization, the handler is stored with "/notifications" path
+	// The non-normalized path "notifications" should NOT be found
 	if m.GetHandler("notifications") != nil {
-		t.Error("Should not find handler at non-normalized path")
+		t.Error("Should not find handler at non-normalized path 'notifications'")
 	}
 }
 

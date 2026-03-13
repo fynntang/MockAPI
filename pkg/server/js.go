@@ -212,7 +212,7 @@ async function loadWSHandlers() {
   el.innerHTML = handlers.map(h => {
     const desc = h.description ? '<span class="desc">' + escapeHtml(h.description) + '</span>' : '';
     const streamBadge = h.stream_enabled ? '<span class="stream-badge" title="Stream Mode">📡</span>' : '';
-    const delayBadge = h.delay ? '<span class="status">' + h.delay + 'ms</span>' : '';
+    const delayBadge = (h.delay_ms != null ? h.delay_ms : h.delay) != null ? '<span class="status">' + (h.delay_ms ?? h.delay) + 'ms</span>' : '';
     const handlerData = encodeURIComponent(JSON.stringify(h));
     return '<div class="route">' +
       '<div class="route-info">' +
@@ -277,16 +277,16 @@ function editWSHandler(data) {
   document.getElementById("ws-mode").value = isStream ? "stream" : "reply";
   
   // Reply mode fields
-  document.getElementById("ws-delay").value = h.delay_ms || h.delay || 0;
+  document.getElementById("ws-delay").value = h.delay_ms ?? h.delay ?? 0;
   document.getElementById("ws-auto-reply").value = h.auto_reply || "";
   document.getElementById("ws-on-connect").value = isStream ? (h.stream_on_connect || "") : (h.on_connect || "");
   document.getElementById("ws-on-message").value = h.on_message || "";
   
   // Stream mode fields
   document.getElementById("ws-stream-messages").value = (h.stream_messages || []).join("\n");
-  document.getElementById("ws-stream-interval").value = h.stream_interval_ms || 1000;
-  document.getElementById("ws-stream-min-delay").value = h.stream_min_delay_ms || 500;
-  document.getElementById("ws-stream-max-delay").value = h.stream_max_delay_ms || 3000;
+  document.getElementById("ws-stream-interval").value = h.stream_interval_ms ?? 1000;
+  document.getElementById("ws-stream-min-delay").value = h.stream_min_delay_ms ?? 500;
+  document.getElementById("ws-stream-max-delay").value = h.stream_max_delay_ms ?? 3000;
   document.getElementById("ws-stream-format").value = h.stream_format || "json";
   document.getElementById("ws-stream-loop").checked = h.stream_loop !== false;
   
@@ -340,7 +340,7 @@ async function saveWSHandler() {
     if (onConnect) h.on_connect = onConnect;
   } else {
     // Reply mode
-    h.delay = parseInt(document.getElementById("ws-delay").value) || 0;
+    h.delay_ms = parseInt(document.getElementById("ws-delay").value) || 0;
     h.auto_reply = document.getElementById("ws-auto-reply").value;
     const onConnect = document.getElementById("ws-on-connect").value.trim();
     if (onConnect) h.on_connect = onConnect;
